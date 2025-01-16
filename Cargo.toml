@@ -11,7 +11,7 @@ members = [
     "opencl",
 #    "opencl-collections",
 #    "opencl-collections-examples",
-#    "opencl-examples",
+    "opencl-examples",
     "opencl-sys",
 #    "opencl-node",
     "utilities",
