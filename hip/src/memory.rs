@@ -8,7 +8,7 @@ use hip_sys::hip_runtime_bindings::{
 pub struct HipBuffer<T: Copy + Clone + Default> {
     size: usize,
     size_bytes: usize,
-    device_ptr: *mut std::os::raw::c_void,
+    mem_ptr: *mut std::os::raw::c_void,
     phantom: std::marker::PhantomData<T>,
 }
 
@@ -16,27 +16,27 @@ impl<T: Copy + Clone + Default> HipBuffer<T> {
     pub fn new(size: usize) -> HipResult<HipBuffer<T>> {
         let size_bytes = std::mem::size_of::<T>() * size;
 
-        let mut device_ptr: *mut std::os::raw::c_void = std::ptr::null_mut();
+        let mut mem_ptr: *mut std::os::raw::c_void = std::ptr::null_mut();
 
-        let ret = unsafe { hipMalloc(&mut device_ptr, size_bytes) };
+        let ret = unsafe { hipMalloc(&mut mem_ptr, size_bytes) };
         hip_check(ret)?;
 
         Ok(Self {
             size,
             size_bytes,
-            device_ptr,
+            mem_ptr,
             phantom: std::marker::PhantomData,
         })
     }
 
-    pub fn get_device_ptr(&self) -> *mut std::os::raw::c_void {
-        self.device_ptr
+    pub fn get_mem_ptr(&self) -> *mut std::os::raw::c_void {
+        self.mem_ptr
     }
 
     pub fn memcpy_host_to_device(&self, host_input: &[T]) -> HipResult<()> {
         let ret = unsafe {
             hipMemcpy(
-                self.device_ptr,
+                self.mem_ptr,
                 host_input.as_ptr() as *const std::os::raw::c_void,
                 self.size_bytes,
                 hipMemcpyKind_hipMemcpyHostToDevice,
@@ -51,7 +51,7 @@ impl<T: Copy + Clone + Default> HipBuffer<T> {
         let ret = unsafe {
             hipMemcpy(
                 output.as_mut_ptr() as *mut std::os::raw::c_void,
-                self.device_ptr,
+                self.mem_ptr,
                 self.size_bytes,
                 hipMemcpyKind_hipMemcpyDeviceToHost,
             )
@@ -65,7 +65,7 @@ impl<T: Copy + Clone + Default> HipBuffer<T> {
 impl<T: Copy + Clone + Default> Drop for HipBuffer<T> {
     fn drop(&mut self) {
         unsafe {
-            let ret = hipFree(self.device_ptr);
+            let ret = hipFree(self.mem_ptr);
             if ret != hipError_t_hipSuccess {
                 panic!("error: hipFree");
             }

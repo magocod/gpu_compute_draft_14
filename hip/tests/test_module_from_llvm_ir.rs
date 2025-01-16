@@ -30,7 +30,7 @@ fn global_array_put(module: hipModule_t, input: &[i32]) {
         }
 
         let args = Args {
-            input: input_buf.get_device_ptr(),
+            input: input_buf.get_mem_ptr(),
         };
 
         let args_size = std::mem::size_of_val(&args);
@@ -80,7 +80,7 @@ fn global_array_get(module: hipModule_t) -> Vec<i32> {
         }
 
         let args = Args {
-            output: output.get_device_ptr(),
+            output: output.get_mem_ptr(),
         };
 
         let args_size = std::mem::size_of_val(&args);
@@ -132,7 +132,7 @@ fn global_array_increase(module: hipModule_t) -> Vec<i32> {
         }
 
         let args = Args {
-            output: output.get_device_ptr(),
+            output: output.get_mem_ptr(),
         };
 
         let args_size = std::mem::size_of_val(&args);

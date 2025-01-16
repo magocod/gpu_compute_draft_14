@@ -53,8 +53,8 @@ impl StackHandle {
             }
 
             let args = Args {
-                items_output: d_items_output.get_device_ptr(),
-                meta_output: d_meta_output.get_device_ptr(),
+                items_output: d_items_output.get_mem_ptr(),
+                meta_output: d_meta_output.get_mem_ptr(),
             };
 
             let size = std::mem::size_of_val(&args);
@@ -117,8 +117,8 @@ impl StackHandle {
             }
 
             let args = Args {
-                input: d_input.get_device_ptr(),
-                output: d_output.get_device_ptr(),
+                input: d_input.get_mem_ptr(),
+                output: d_output.get_mem_ptr(),
             };
             // let args_size = std::mem::size_of_val(&args);
             // let mut config = prepare_kernel_config(args);
@@ -167,7 +167,7 @@ impl StackHandle {
             }
 
             let args = Args {
-                output: d_output.get_device_ptr(),
+                output: d_output.get_mem_ptr(),
             };
             // let args_size = std::mem::size_of_val(&args);
             // let mut config = prepare_kernel_config(args);

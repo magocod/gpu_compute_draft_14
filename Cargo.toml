@@ -6,7 +6,7 @@ members = [
     "amdsmi-sys",
     "hip",
     "hip-sys",
-#    "hsa",
+    "hsa",
     "hsa-sys",
     "opencl",
     "opencl-collections",

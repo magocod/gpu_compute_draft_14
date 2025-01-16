@@ -69,9 +69,9 @@ mod tests {
         }
 
         let args = Args {
-            output: doutput.get_device_ptr(),
-            input1: dinput1.get_device_ptr(),
-            input2: dinput2.get_device_ptr(),
+            output: doutput.get_mem_ptr(),
+            input1: dinput1.get_mem_ptr(),
+            input2: dinput2.get_mem_ptr(),
             size: ele_size,
         };
 

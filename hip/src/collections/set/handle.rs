@@ -57,7 +57,7 @@ impl ArraySetHandle {
             }
 
             let args = Args {
-                output: d_output.get_device_ptr(),
+                output: d_output.get_mem_ptr(),
             };
 
             let size = std::mem::size_of_val(&args);
@@ -146,8 +146,8 @@ impl ArraySetHandle {
             }
 
             let args = Args {
-                items_input: d_items_input.get_device_ptr(),
-                indices_output: d_indices_output.get_device_ptr(),
+                items_input: d_items_input.get_mem_ptr(),
+                indices_output: d_indices_output.get_mem_ptr(),
             };
             // let args_size = std::mem::size_of_val(&args);
             // let mut config = prepare_kernel_config(args);
@@ -202,8 +202,8 @@ impl ArraySetHandle {
             }
 
             let args = Args {
-                items_input: d_items_input.get_device_ptr(),
-                indices_output: d_indices_output.get_device_ptr(),
+                items_input: d_items_input.get_mem_ptr(),
+                indices_output: d_indices_output.get_mem_ptr(),
             };
             // let args_size = std::mem::size_of_val(&args);
             // let mut config = prepare_kernel_config(args);
