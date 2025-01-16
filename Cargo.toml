@@ -8,11 +8,11 @@ members = [
 #    "hip-sys",
 #    "hsa",
 #    "hsa-sys",
-#    "opencl",
+    "opencl",
 #    "opencl-collections",
 #    "opencl-collections-examples",
 #    "opencl-examples",
-#    "opencl-sys",
+    "opencl-sys",
 #    "opencl-node",
     "utilities",
 ]
