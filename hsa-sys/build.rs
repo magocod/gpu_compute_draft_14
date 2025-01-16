@@ -30,5 +30,5 @@ fn main() {
     println!("cargo:rustc-link-lib=dylib=hsa-runtime64");
 
     // generate bindings
-    _generate_hsa_bindings();
+    // _generate_hsa_bindings();
 }
