@@ -1,11 +1,11 @@
-use opencl::wrapper::block::{OpenclBlock, OpenclCommonOperation};
+use opencl::wrapper::system::{OpenclCommonOperation, System};
 use opencl_collections::config::DEFAULT_DEVICE_INDEX;
 use opencl_collections::map::config::MapSrc;
 use opencl_collections::utils::MB;
 use std::time::{Duration, Instant};
 use std::{fs, thread};
 
-const SECOND_SLEEP: u64 = 10;
+const SECOND_SLEEP: u64 = 5;
 
 fn main() {
     let mut map_src: MapSrc<i32> = MapSrc::new(1);
@@ -23,9 +23,9 @@ fn main() {
 
     println!("start compile cl");
     let now = Instant::now();
-    let ocl_block = OpenclBlock::new(DEFAULT_DEVICE_INDEX, &program_source).unwrap();
-    println!("ocl_block {}", ocl_block.get_id());
-    ocl_block.initialize_memory().unwrap();
+    let system = System::new(DEFAULT_DEVICE_INDEX, &program_source).unwrap();
+    println!("system {}", system.get_id());
+    system.initialize_memory().unwrap();
     println!("{} seg compile cl", now.elapsed().as_secs());
 
     println!();

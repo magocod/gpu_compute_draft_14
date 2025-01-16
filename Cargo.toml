@@ -10,7 +10,7 @@ members = [
     "hsa-sys",
     "opencl",
     "opencl-collections",
-#    "opencl-collections-examples",
+    "opencl-collections-examples",
     "opencl-examples",
     "opencl-sys",
     "opencl-node",

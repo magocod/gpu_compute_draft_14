@@ -3,7 +3,7 @@ use std::fmt::Debug;
 pub const DEFAULT_DEVICE_INDEX: usize = 0;
 
 // TODO configure rust log
-pub const DEBUG_MODE: bool = true;
+pub const DEBUG_MODE: bool = false;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ClType {

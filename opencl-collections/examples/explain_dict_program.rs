@@ -1,11 +1,11 @@
-use opencl::wrapper::block::{OpenclBlock, OpenclCommonOperation};
+use opencl::wrapper::system::{OpenclCommonOperation, System};
 use opencl_collections::config::DEFAULT_DEVICE_INDEX;
 use opencl_collections::dictionary::config::DictSrc;
 use std::time::{Duration, Instant};
 use std::{fs, thread};
 // TODO ...
 
-const SECOND_SLEEP: u64 = 10;
+const SECOND_SLEEP: u64 = 5;
 
 fn main() {
     let mut dict_src: DictSrc<i32> = DictSrc::new();
@@ -21,9 +21,9 @@ fn main() {
 
     println!("start compile cl");
     let now = Instant::now();
-    let ocl_block = OpenclBlock::new(DEFAULT_DEVICE_INDEX, &program_source).unwrap();
-    println!("ocl_block {}", ocl_block.get_id());
-    ocl_block.initialize_memory().unwrap();
+    let system = System::new(DEFAULT_DEVICE_INDEX, &program_source).unwrap();
+    println!("system {}", system.get_id());
+    system.initialize_memory().unwrap();
     println!("{} seg compile cl", now.elapsed().as_secs());
 
     thread::sleep(Duration::from_secs(SECOND_SLEEP));
