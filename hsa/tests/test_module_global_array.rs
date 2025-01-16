@@ -353,7 +353,7 @@ impl<'a> HsaModule<'a> {
     }
 }
 
-impl<'a> Drop for HsaModule<'a> {
+impl Drop for HsaModule<'_> {
     fn drop(&mut self) {
         unsafe {
             let err = hsa_signal_destroy(self.signal);

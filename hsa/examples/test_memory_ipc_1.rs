@@ -5,7 +5,8 @@ use hsa::utils::SharedMemory;
 use hsa_sys::bindings::{
     hsa_amd_ipc_memory_create, hsa_amd_ipc_signal_create, hsa_amd_memory_fill,
     hsa_amd_signal_attribute_t_HSA_AMD_SIGNAL_IPC, hsa_amd_signal_create,
-    hsa_signal_condition_t_HSA_SIGNAL_CONDITION_NE, hsa_signal_t, hsa_signal_wait_acquire,
+    hsa_signal_condition_t_HSA_SIGNAL_CONDITION_NE, hsa_signal_destroy, hsa_signal_t,
+    hsa_signal_wait_acquire, hsa_status_t_HSA_STATUS_SUCCESS,
     hsa_wait_state_t_HSA_WAIT_STATE_BLOCKED,
 };
 use libc::{shmat, shmget, IPC_CREAT, IPC_EXCL, S_IRGRP, S_IRUSR, S_IWGRP, S_IWUSR};
@@ -127,6 +128,17 @@ impl<'a> HsaModule<'a> {
         }
 
         self.print_output();
+    }
+}
+
+impl Drop for HsaModule<'_> {
+    fn drop(&mut self) {
+        unsafe {
+            let ret = hsa_signal_destroy(self.ipc_signal);
+            if ret != hsa_status_t_HSA_STATUS_SUCCESS {
+                panic!("hsa_signal_destroy error: {:?}", ret);
+            }
+        }
     }
 }
 
