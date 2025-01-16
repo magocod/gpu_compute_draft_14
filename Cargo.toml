@@ -13,7 +13,7 @@ members = [
 #    "opencl-collections-examples",
     "opencl-examples",
     "opencl-sys",
-#    "opencl-node",
+    "opencl-node",
     "utilities",
 ]
 
