@@ -7,7 +7,7 @@ members = [
 #    "hip",
 #    "hip-sys",
 #    "hsa",
-#    "hsa-sys",
+    "hsa-sys",
     "opencl",
 #    "opencl-collections",
 #    "opencl-collections-examples",
