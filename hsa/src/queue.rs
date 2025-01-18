@@ -51,7 +51,7 @@ pub struct WriteAqlPacket {
     pub packet_id: u64,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Queue {
     hsa_queue_ptr: *mut hsa_queue_t,
 }

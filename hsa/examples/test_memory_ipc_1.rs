@@ -1,13 +1,12 @@
 use hsa::error::hsa_check;
 use hsa::memory::{memory_copy_async, HsaBuffer};
+use hsa::signal::Signal;
 use hsa::system::System;
 use hsa::utils::SharedMemory;
 use hsa_sys::bindings::{
     hsa_amd_ipc_memory_create, hsa_amd_ipc_signal_create, hsa_amd_memory_fill,
-    hsa_amd_signal_attribute_t_HSA_AMD_SIGNAL_IPC, hsa_amd_signal_create,
-    hsa_signal_condition_t_HSA_SIGNAL_CONDITION_NE, hsa_signal_destroy, hsa_signal_t,
-    hsa_signal_wait_acquire, hsa_status_t_HSA_STATUS_SUCCESS,
-    hsa_wait_state_t_HSA_WAIT_STATE_BLOCKED,
+    hsa_amd_signal_attribute_t_HSA_AMD_SIGNAL_IPC, hsa_signal_condition_t_HSA_SIGNAL_CONDITION_NE,
+    hsa_signal_wait_scacquire, hsa_wait_state_t_HSA_WAIT_STATE_BLOCKED,
 };
 use libc::{shmat, shmget, IPC_CREAT, IPC_EXCL, S_IRGRP, S_IRUSR, S_IWGRP, S_IWUSR};
 
@@ -19,7 +18,7 @@ struct HsaModule<'a> {
     system: &'a System,
     output_buf: HsaBuffer<i32>,
     ipc_mem_buf: HsaBuffer<i32>,
-    ipc_signal: hsa_signal_t,
+    ipc_signal: Signal,
 }
 
 impl<'a> HsaModule<'a> {
@@ -38,7 +37,8 @@ impl<'a> HsaModule<'a> {
 
         let shared_size = std::mem::size_of::<SharedMemory>();
 
-        let mut ipc_signal = hsa_signal_t { handle: 0 };
+        let ipc_signal =
+            Signal::new(1, hsa_amd_signal_attribute_t_HSA_AMD_SIGNAL_IPC as u64).unwrap();
 
         unsafe {
             // Allocate linux shared memory.
@@ -70,16 +70,10 @@ impl<'a> HsaModule<'a> {
             );
             hsa_check(ret).unwrap();
 
-            let ret = hsa_amd_signal_create(
-                1,
-                0,
-                std::ptr::null_mut(),
-                hsa_amd_signal_attribute_t_HSA_AMD_SIGNAL_IPC as u64,
-                &mut ipc_signal,
+            let ret = hsa_amd_ipc_signal_create(
+                ipc_signal.get_hsa_signal_t(),
+                &mut shared_values.signal_handle,
             );
-            hsa_check(ret).unwrap();
-
-            let ret = hsa_amd_ipc_signal_create(ipc_signal, &mut shared_values.signal_handle);
             hsa_check(ret).unwrap();
         }
 
@@ -116,29 +110,18 @@ impl<'a> HsaModule<'a> {
         println!("waiting for signal");
 
         unsafe {
-            let r = hsa_signal_wait_acquire(
-                self.ipc_signal,
+            let r = hsa_signal_wait_scacquire(
+                self.ipc_signal.get_hsa_signal_t(),
                 hsa_signal_condition_t_HSA_SIGNAL_CONDITION_NE,
                 1,
                 u64::MAX,
                 hsa_wait_state_t_HSA_WAIT_STATE_BLOCKED,
             );
 
-            println!("hsa_signal_wait_acquire {}", r);
+            println!("hsa_signal_wait_scacquire {}", r);
         }
 
         self.print_output();
-    }
-}
-
-impl Drop for HsaModule<'_> {
-    fn drop(&mut self) {
-        unsafe {
-            let ret = hsa_signal_destroy(self.ipc_signal);
-            if ret != hsa_status_t_HSA_STATUS_SUCCESS {
-                panic!("hsa_signal_destroy error: {:?}", ret);
-            }
-        }
     }
 }
 

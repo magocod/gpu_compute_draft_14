@@ -4,9 +4,7 @@ use hsa::system::System;
 use hsa::utils::SharedMemory;
 use hsa_sys::bindings::{
     hsa_amd_ipc_memory_attach, hsa_amd_ipc_memory_detach, hsa_amd_ipc_signal_attach,
-    hsa_signal_condition_t_HSA_SIGNAL_CONDITION_NE, hsa_signal_destroy, hsa_signal_store_release,
-    hsa_signal_t, hsa_signal_wait_relaxed, hsa_status_t_HSA_STATUS_SUCCESS,
-    hsa_wait_state_t_HSA_WAIT_STATE_BLOCKED,
+    hsa_signal_destroy, hsa_signal_store_screlease, hsa_signal_t, hsa_status_t_HSA_STATUS_SUCCESS,
 };
 use libc::shmat;
 
@@ -120,7 +118,7 @@ impl<'a> HsaModule<'a> {
 
     pub fn update_signal(&self) {
         unsafe {
-            hsa_signal_store_release(self.ipc_signal, 2);
+            hsa_signal_store_screlease(self.ipc_signal, 2);
         }
     }
 }
@@ -142,7 +140,7 @@ impl Drop for HsaModule<'_> {
 }
 
 fn main() {
-    let shm_id = 8421402;
+    let shm_id = 524298;
     let system = System::new().unwrap();
 
     let module_1 = HsaModule::new(&system, shm_id);

@@ -1,14 +1,13 @@
 use hsa::code_object::{CodeObject, DispatchPacketOptions};
-use hsa::error::hsa_check;
 use hsa::memory::{memory_copy_async, HsaBuffer};
 use hsa::queue::{atomic_set_packet_header, Queue};
+use hsa::signal::Signal;
 use hsa::system::System;
 use hsa_sys::bindings::{
     hsa_fence_scope_t_HSA_FENCE_SCOPE_SYSTEM,
     hsa_packet_header_t_HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE,
     hsa_packet_header_t_HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE,
-    hsa_packet_type_t_HSA_PACKET_TYPE_KERNEL_DISPATCH, hsa_signal_create, hsa_signal_destroy,
-    hsa_signal_t, hsa_status_t_HSA_STATUS_SUCCESS,
+    hsa_packet_type_t_HSA_PACKET_TYPE_KERNEL_DISPATCH,
 };
 use std::env;
 use std::path::Path;
@@ -18,20 +17,16 @@ const WORK_GROUP_SIZE_X: usize = 32;
 #[derive(Debug)]
 struct HsaModule<'a> {
     system: &'a System,
-    signal: hsa_signal_t,
+    signal: Signal,
     queue: Queue,
     code_object: CodeObject,
 }
 
 impl<'a> HsaModule<'a> {
     pub fn new<P: AsRef<Path>>(system: &'a System, file_path: P) -> Self {
-        let mut signal = hsa_signal_t { handle: 0 };
-
         let gpu_agent = system.get_first_gpu().unwrap();
 
-        // Create the completion signal used when dispatching a packet
-        let ret = unsafe { hsa_signal_create(1, 0, std::ptr::null_mut(), &mut signal) };
-        hsa_check(ret).unwrap();
+        let signal = Signal::new(1, 0).unwrap();
 
         let code_object = CodeObject::new(file_path, gpu_agent).unwrap();
 
@@ -83,7 +78,7 @@ impl<'a> HsaModule<'a> {
                 grid_size_y: 0,
                 grid_size_z: 0,
             },
-            self.signal,
+            self.signal.get_hsa_signal_t(),
         );
 
         let kern_arg_pool = self.system.get_kern_arg_pool();
@@ -126,7 +121,8 @@ impl<'a> HsaModule<'a> {
                 write_aql_packet.packet_ptr,
             );
 
-            self.queue.dispatch(write_aql_packet, self.signal);
+            self.queue
+                .dispatch(write_aql_packet, self.signal.get_hsa_signal_t());
 
             let slice = std::slice::from_raw_parts(input_buf.get_mem_ptr() as *mut i32, 32);
             println!("input {:?}", slice);
@@ -170,7 +166,7 @@ impl<'a> HsaModule<'a> {
                 grid_size_y: 0,
                 grid_size_z: 0,
             },
-            self.signal,
+            self.signal.get_hsa_signal_t(),
         );
 
         let kern_arg_pool = self.system.get_kern_arg_pool();
@@ -202,7 +198,8 @@ impl<'a> HsaModule<'a> {
                 write_aql_packet.packet_ptr,
             );
 
-            self.queue.dispatch(write_aql_packet, self.signal);
+            self.queue
+                .dispatch(write_aql_packet, self.signal.get_hsa_signal_t());
 
             let slice = std::slice::from_raw_parts(output_buf.get_mem_ptr() as *mut i32, 32);
             println!("output {:?}", slice);
@@ -228,7 +225,7 @@ impl<'a> HsaModule<'a> {
                 grid_size_y: 0,
                 grid_size_z: 0,
             },
-            self.signal,
+            self.signal.get_hsa_signal_t(),
         );
 
         unsafe {
@@ -248,7 +245,8 @@ impl<'a> HsaModule<'a> {
                 write_aql_packet.packet_ptr,
             );
 
-            self.queue.dispatch(write_aql_packet, self.signal);
+            self.queue
+                .dispatch(write_aql_packet, self.signal.get_hsa_signal_t());
         }
     }
 
@@ -293,7 +291,7 @@ impl<'a> HsaModule<'a> {
                 grid_size_y: 0,
                 grid_size_z: 0,
             },
-            self.signal,
+            self.signal.get_hsa_signal_t(),
         );
 
         let kern_arg_pool = self.system.get_kern_arg_pool();
@@ -338,7 +336,8 @@ impl<'a> HsaModule<'a> {
                 write_aql_packet.packet_ptr,
             );
 
-            self.queue.dispatch(write_aql_packet, self.signal);
+            self.queue
+                .dispatch(write_aql_packet, self.signal.get_hsa_signal_t());
 
             let slice = std::slice::from_raw_parts(input_buf.get_mem_ptr() as *mut i32, 32);
             println!("input {:?}", slice);
@@ -350,17 +349,6 @@ impl<'a> HsaModule<'a> {
         }
 
         output
-    }
-}
-
-impl Drop for HsaModule<'_> {
-    fn drop(&mut self) {
-        unsafe {
-            let err = hsa_signal_destroy(self.signal);
-            if err != hsa_status_t_HSA_STATUS_SUCCESS {
-                panic!("hsa_signal_destroy error: {}", err);
-            }
-        }
     }
 }
 
