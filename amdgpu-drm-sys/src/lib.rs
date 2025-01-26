@@ -1,0 +1,10 @@
+#![allow(non_camel_case_types)]
+#![allow(clippy::unnecessary_cast)]
+#![allow(non_upper_case_globals)]
+#![allow(unused_parens)]
+#![allow(clippy::clone_on_copy)]
+#![allow(clippy::missing_safety_doc)]
+#![allow(clippy::nonminimal_bool)]
+#![allow(clippy::new_without_default)]
+#![allow(clippy::let_and_return)]
+pub mod bindings;

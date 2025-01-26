@@ -1,0 +1,9 @@
+[package]
+name = "hsakmt-rs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+libc = "0.2"
+amdgpu-drm-sys = { path = "../amdgpu-drm-sys" }
+utilities = { path = "../utilities" }

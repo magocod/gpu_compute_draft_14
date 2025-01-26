@@ -2,12 +2,15 @@
 resolver = "2"
 
 members = [
+    "amdgpu-drm-sys",
     "amdsmi",
     "amdsmi-sys",
     "hip",
     "hip-sys",
     "hsa",
     "hsa-sys",
+    "hsakmt-rs",
+    "hsakmt-sys",
     "opencl",
     "opencl-collections",
     "opencl-collections-examples",

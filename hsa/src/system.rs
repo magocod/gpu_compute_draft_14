@@ -94,7 +94,7 @@ impl Default for Agent {
 
 unsafe extern "C" fn get_memory_pools(
     pool: hsa_amd_memory_pool_t,
-    data: *mut ::std::os::raw::c_void,
+    data: *mut std::os::raw::c_void,
 ) -> hsa_status_t {
     let agent = &mut *(data as *mut Agent);
 
