@@ -53,8 +53,9 @@ thanks.
 # Vision
 
 * https://github.com/crossbeam-rs/crossbeam
-* https://serde.rs/
+* https://serde.rs/ (in rust there was a standard for gpu, at the same level as serde)
 * https://docs.rust-embedded.org/discovery/microbit/index.html (Can you imagine programming on a GPU as if it were a microcontroller?, with more freedoms)
+* https://docs.rust-embedded.org/book/intro/index.html (What are we if we don't dream, programming a GPU with a part of its private source code (driver) and a public one?)
 
 ---
 
