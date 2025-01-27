@@ -40,13 +40,13 @@ pub unsafe fn hsakmt_init_kfd_version() -> HsakmtStatus {
     // let ioc_get = (((2) << (((0+8)+8)+14)) | (((0x01)) << 0) | ((((std::mem::size_of::<KfdIoctlGetVersionArgs>()))) << ((0+8)+8)));
     let b = ('K' as i32) << 8;
     let b_2 = std::mem::size_of::<KfdIoctlGetVersionArgs>() << (8 + 8);
-    let ioc_get = ((2) << ((8 + 8) + 14)) | b | ((0x01) << 0) | b_2 as i32;
+    let amdkfd_ioc_get_version = ((2) << ((8 + 8) + 14)) | b | ((0x01) << 0) | b_2 as i32;
 
     // macro AMDKFD_IOC_GET_VERSION ???
     // (((2U) << (((0+8)+8)+14)) | ((('K')) << (0+8)) | (((0x01)) << 0) | ((((sizeof(struct kfd_ioctl_get_version_args)))) << ((0+8)+8)))
     if hsakmt_ioctl(
         global.hsakmt_kfd_fd,
-        ioc_get as u64,
+        amdkfd_ioc_get_version as u64,
         &mut args as *mut _ as *mut std::os::raw::c_void,
     ) == -1
     {

@@ -15,13 +15,33 @@ CPU
 ROCM
 * 6.2.2.60202-116~22.04
 
+Other
+* At the moment it mostly requires the explanation of the code and its final objectives (I seek to somehow justify a certain madness of the present code)
+
 
 The main goal of this project is to create a draft of what it would be like to have data structures controlled and managed 100% on the GPU.
 
+goals:
+- rewrite hsa runtime from c++ to rust
+- write an alternative to d-bus (https://www.freedesktop.org/wiki/Software/dbus/) controlled 100% by a gpu (it is possible, as it would look like)
+
+
+After simple practices of opencl, hip, hsa and cuda:
+
+questions:
+- All the execution control of the device has to be done at host side. ?
+- The device has to care only about completing the queued jobs, as fast as possible. ?
+- It is actually possible for a GPU to execute complex algorithms without help from the processor, such as controlling other peripherals.
+- Can you imagine programming on a GPU as if it were a microcontroller?
+
+
 Inspired by the following libraries:
-* https://github.com/stotko/stdgpu
-* https://github.com/NVIDIA/thrust
+* https://github.com/stotko/stdgpu 
 * https://github.com/nvidia/cccl
+* https://github.com/rust-gpu/rust-gpu
+* https://github.com/prsyahmi/GpuRamDrive.git
+* https://github.com/tracel-ai/cubecl-hip
+* https://github.com/tracel-ai/cubecl
 
 
 thanks.
@@ -33,8 +53,8 @@ thanks.
 # Vision
 
 * https://github.com/crossbeam-rs/crossbeam
-* https://docs.rust-embedded.org/discovery/microbit/index.html
-* https://github.com/prsyahmi/GpuRamDrive.git
+* https://serde.rs/
+* https://docs.rust-embedded.org/discovery/microbit/index.html (Can you imagine programming on a GPU as if it were a microcontroller?, with more freedoms)
 
 ---
 
@@ -48,13 +68,20 @@ Rust bindings - OpenCL C 2.0 (ROCM CL headers)
 
 ## opencl
 
-TODO explain
+Rust wrapper - OpenCL C 2.0
+
+The goal of this library is to provide a small wrapper around the opencl 2.0 API,
+in most cases trying to preserve the flow and names of each function of the original api,
+only intended to be used in conjunction with gpus to maintain the greater simplicity.
 
 ## opencl-examples
 
-TODO explain
+simple opencl practices, quickly observe what can cause a fatal error on an amd gpu,...
 
 ## opencl-collections
+
+* At the time of making these examples, I was a complete newbie to opencl, I chose to write the cl code in text, 
+at first it seemed like a good idea (It was not for advanced cases)
 
 Implementations that seek to provide containers the same (similar) to those provided by rust std and c++
 * https://doc.rust-lang.org/std/collections/
@@ -65,11 +92,11 @@ Implementations that seek to provide containers the same (similar) to those prov
 
 ## opencl-collections-examples
 
-Examples of use of collections (opencl-collections) and comparisons with existing libraries in rust
+Examples of use of collections (opencl-collections) and comparisons with existing libraries in rust (at least what was wanted)
 
 ## opencl-node
 
-TODO explain
+implementing some type of algorithm with gpu in typescript, is the objective
 
 * https://github.com/napi-rs/napi-rs
 * https://github.com/neon-bindings/neon
@@ -112,11 +139,11 @@ Rust wrapper of AMD System Management Interface (AMD SMI) Library (https://githu
 
 ## gpu-fs
 
-TODO explain
+use gpu like fs? (https://github.com/prsyahmi/GpuRamDrive.git)
 
 ## gpu-ipc
 
-TODO explain
+use gpu as ipc (Interprocess Communication) ? (https://www.freedesktop.org/wiki/Software/dbus/)
 
 * https://dbus.freedesktop.org/doc/dbus-specification.html
 * https://github.com/dbus2/zbus
@@ -125,6 +152,8 @@ TODO explain
 ---
 
 # Docs
+
+I hope at some point to write here how the programming journey on a GPU was, what the learning process is like from my point of view.
 
 ```bash
 mdbook serve gpu-compute-book

@@ -287,11 +287,10 @@ pub struct System {
     id: Uuid,
     pub platform: Platform,
     pub devices: Vec<Device>,
-    /// required to write buffers
     pub context: Context,
     /// required to run kernel, read and write cl buffers
     pub host_command_queue: CommandQueue,
-    /// required to run kernel in device side
+    /// required to run kernel in device side (enqueue_kernel)
     pub device_command_queue_0: DeviceCommandQueue,
     /// required to create kernel
     pub program: Program,
