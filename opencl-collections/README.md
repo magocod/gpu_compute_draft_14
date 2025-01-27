@@ -1,6 +1,14 @@
 # Opencl Collections
 
-TODO explain
+* At the time of making these examples, I was a complete newbie to opencl, I chose to write the cl code in text,
+  at first it seemed like a good idea (It was not for advanced cases)
+
+Implementations that seek to provide containers the same (similar) to those provided by rust std and c++ containers
+
+Inspired by:
+* https://github.com/stotko/stdgpu
+* https://github.com/NVIDIA/cuCollections
+* https://github.com/ROCm/hipCollections
 
 ## Rust std collections
 
@@ -50,12 +58,6 @@ https://cplusplus.com/reference/stl/
   - [ ] unordered_multiset
   - [x] unordered_map -> OpenclCollection.Map (without hashing) or OpenclCollection.Dictionary (without hashing)
   - [ ] unordered_multimap
-
-  
-* https://github.com/stotko/stdgpu
-* https://github.com/NVIDIA/cuCollections
-* https://github.com/ROCm/hipCollections
-
 
 ## Collections
 

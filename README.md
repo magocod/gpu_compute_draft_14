@@ -110,19 +110,31 @@ implementing some type of algorithm with gpu in typescript, is the objective
 
 ## hip-sys
 
-TODO explain
+Rust bindings of AMD Heterogeneous-computing Interface for Portability (HIP) (https://github.com/ROCm/HIP)
 
 ## hip
 
-TODO explain
+Rust wrapper of AMD Heterogeneous-computing Interface for Portability (HIP) (https://github.com/ROCm/amdsmi)
 
 ## hsa-sys
 
-TODO explain
+Rust bindings of AMD HSA Runtime (hsa-runtime) (https://github.com/ROCm/ROCR-Runtime)
 
 ## hsa
 
-TODO explain
+Rust wrapper of AMD HSA Runtime (hsa-runtime) (https://github.com/ROCm/ROCR-Runtime)
+
+## hsakmt-sys
+
+Rust bindings of AMD ROCt Thunk Library (libhsakmt) (https://github.com/ROCm/ROCR-Runtime)
+
+## hsakmt-rs
+
+ROCt Thunk Library (`libhsakmt`) rewrite from C to Rust
+
+## hsa-rs (TODO)
+
+The HSA Runtime (`hsa-runtime`) rewrite from c++ to Rust
 
 ## amdsmi-sys
 
@@ -131,6 +143,10 @@ Rust bindings of AMD System Management Interface (AMD SMI) Library (https://gith
 ## amdsmi
 
 Rust wrapper of AMD System Management Interface (AMD SMI) Library (https://github.com/ROCm/amdsmi)
+
+## amdgpu-drm-sys
+
+Rust bindings of AMD (amdgpu, amdgpu_drm)
 
 ---
 
@@ -182,3 +198,4 @@ https://github.com/tracel-ai/cubecl
 https://github.com/ROCm/ROCm/issues/419
 apt show rocm-libs -a
 
+https://youtrack.jetbrains.com/issue/CPP-30059

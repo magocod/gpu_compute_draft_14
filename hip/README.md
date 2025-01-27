@@ -1,13 +1,10 @@
 # AMD HIP
 
+Rust wrapper of AMD Heterogeneous-computing Interface for Portability (HIP) (https://github.com/ROCm/amdsmi)
 
-https://rocm.docs.amd.com/projects/HIP/en/latest/how-to/hip_rtc.html
-
-https://github.com/ROCm/HIP/blob/amd-staging/docs/how-to/faq.md
-
-https://rocm.docs.amd.com/projects/HIP/en/latest/index.html
-
-https://github.com/ROCm/HIP/tree/amd-staging
+| ROCM Version | Cargo Feature |          
+|:-------------|:--------------|
+| 6.2.2        | rocm_6_2_2    |
 
 # Testing
 
@@ -47,4 +44,12 @@ v2
 ```
 
 
-https://youtrack.jetbrains.com/issue/CPP-30059
+other
+
+https://rocm.docs.amd.com/projects/HIP/en/latest/how-to/hip_rtc.html
+
+https://github.com/ROCm/HIP/blob/amd-staging/docs/how-to/faq.md
+
+https://rocm.docs.amd.com/projects/HIP/en/latest/index.html
+
+https://github.com/ROCm/HIP/tree/amd-staging

@@ -1,3 +1,11 @@
+# AMD HIP SYS
+
+Rust bindings of AMD HSA Runtime (hsa-runtime) (https://github.com/ROCm/ROCR-Runtime)
+
+| ROCM Version | Cargo Feature |          
+|:-------------|:--------------|
+| 6.2.2        | rocm_6_2_2    |__
+
 
 test_global_array
 
