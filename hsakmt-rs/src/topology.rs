@@ -221,8 +221,6 @@ pub unsafe fn hsakmt_topology_sysfs_get_system_props(
 
     hsakmt_topology_global_map_user_to_sysfs_node_id_set(ids);
 
-    println!("yeah");
-
     HSAKMT_STATUS_SUCCESS
 }
 

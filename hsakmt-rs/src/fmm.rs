@@ -69,8 +69,6 @@ pub unsafe fn hsakmt_open_drm_render_device(minor: i32) -> i32 {
 
     let fd = open(path_cs.as_ptr(), O_RDWR | O_CLOEXEC);
 
-    println!("hsakmt_open_drm_render_device fd {fd}");
-
     if fd < 0 {
         let errno = std::io::Error::last_os_error().raw_os_error().unwrap();
 

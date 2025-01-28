@@ -52,6 +52,12 @@ pub fn hsakmt_page_shift_set(hsakmt_page_shift: i32) {
     HSA_KMT_GLOBAL.lock().unwrap().hsakmt_page_shift = hsakmt_page_shift;
 }
 
+pub fn check_kfd_open_and_panic() {
+    if HSA_KMT_GLOBAL.lock().unwrap().hsakmt_kfd_open_count == 0 {
+        panic!("HSAKMT_STATUS_KERNEL_IO_CHANNEL_NOT_OPENED");
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

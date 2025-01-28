@@ -64,3 +64,37 @@ pub unsafe fn hsakmt_init_kfd_version() -> HsakmtStatus {
 
     HSAKMT_STATUS_SUCCESS
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::open_close::hsakmt_open_kfd;
+    use crate::version::hsa_kmt_get_version;
+
+    #[test]
+    fn test_hsakmt_get_version() {
+        unsafe {
+            let ret = hsakmt_open_kfd();
+            assert_eq!(ret, HSAKMT_STATUS_SUCCESS);
+
+            let version_info = hsa_kmt_get_version();
+            println!("{:#?}", version_info);
+
+            assert!(version_info.KernelInterfaceMajorVersion > 0);
+        }
+    }
+
+    #[test]
+    fn test_hsakmt_get_version_not_initialized() {
+        let version_info = hsa_kmt_get_version();
+        println!("{:#?}", version_info);
+
+        assert_eq!(
+            version_info,
+            HsaVersionInfo {
+                KernelInterfaceMajorVersion: 0,
+                KernelInterfaceMinorVersion: 0,
+            }
+        );
+    }
+}

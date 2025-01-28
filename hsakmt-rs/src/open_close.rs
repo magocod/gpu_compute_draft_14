@@ -103,6 +103,8 @@ pub unsafe fn hsakmt_open_kfd() -> HsakmtStatus {
             close(fd);
         }
 
+        hsakmt_kfd_open_count_increase();
+
         // println!("{:#?}", sys_props)
 
         // hsakmt_init_device_debugging_memory
@@ -152,6 +154,20 @@ mod tests {
             assert_eq!(ret, HSAKMT_STATUS_SUCCESS);
 
             println!("{:#?}", hsa_kmt_get_version())
+        }
+
+        hsakmt_global_print();
+        hsakmt_fmm_global_print();
+    }
+
+    #[test]
+    fn test_hsakmt_open_kfd_already_opened() {
+        unsafe {
+            let ret = hsakmt_open_kfd();
+            assert_eq!(ret, HSAKMT_STATUS_SUCCESS);
+
+            let ret = hsakmt_open_kfd();
+            assert_eq!(ret, HSAKMT_STATUS_KERNEL_ALREADY_OPENED);
         }
 
         hsakmt_global_print();
