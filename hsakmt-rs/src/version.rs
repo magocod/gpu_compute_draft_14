@@ -1,9 +1,9 @@
 use crate::globals::hsakmt_global_get;
-use crate::libhsakmt::hsakmt_ioctl;
-use crate::types::HsakmtStatus::{
+use crate::hsakmttypes::HsakmtStatus::{
     HSAKMT_STATUS_DRIVER_MISMATCH, HSAKMT_STATUS_ERROR, HSAKMT_STATUS_SUCCESS,
 };
-use crate::types::{HsaVersionInfo, HsakmtStatus};
+use crate::hsakmttypes::{HsaVersionInfo, HsakmtStatus};
+use crate::libhsakmt::hsakmt_ioctl;
 use std::sync::Mutex;
 
 static VERSION_GLOBAL: Mutex<HsaVersionInfo> = Mutex::new(HsaVersionInfo {

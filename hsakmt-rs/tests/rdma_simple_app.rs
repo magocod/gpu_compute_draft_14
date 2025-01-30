@@ -1,5 +1,5 @@
+use hsakmt_rs::hsakmttypes::HsakmtStatus::HSAKMT_STATUS_SUCCESS;
 use hsakmt_rs::open_close::hsakmt_open_kfd;
-use hsakmt_rs::types::HsakmtStatus::HSAKMT_STATUS_SUCCESS;
 use hsakmt_rs::version::hsa_kmt_get_version;
 use libc::{open, strerror, O_RDWR};
 use std::ffi::CString;

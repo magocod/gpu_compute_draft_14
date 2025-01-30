@@ -2,11 +2,13 @@
 #![allow(clippy::missing_safety_doc)]
 
 pub mod fmm;
+pub mod fmm_globals;
 pub mod globals;
+pub mod hsakmttypes;
+pub mod kfd_ioctl;
 pub mod libhsakmt;
 pub mod open_close;
-mod queues;
+pub mod queues;
 pub mod test_kfd_utils;
 pub mod topology;
-pub mod types;
 pub mod version;

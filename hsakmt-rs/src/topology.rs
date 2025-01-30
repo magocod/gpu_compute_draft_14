@@ -1,21 +1,21 @@
 #![allow(non_camel_case_types, dead_code, non_snake_case)]
 
-use crate::fmm::hsakmt_open_drm_render_device;
+use crate::fmm::{hsakmt_fmm_init_process_apertures, hsakmt_open_drm_render_device};
 use crate::globals::{check_kfd_open_and_panic, hsakmt_global_get};
-use crate::queues::hsakmt_get_vgpr_size_per_cu;
-use crate::types::HsakmtStatus::{
+use crate::hsakmttypes::HsakmtStatus::{
     HSAKMT_STATUS_ERROR, HSAKMT_STATUS_INVALID_NODE_UNIT, HSAKMT_STATUS_INVALID_PARAMETER,
     HSAKMT_STATUS_NOT_SUPPORTED, HSAKMT_STATUS_NO_MEMORY, HSAKMT_STATUS_SUCCESS,
 };
-use crate::types::HSA_HEAPTYPE::HSA_HEAPTYPE_FRAME_BUFFER_PUBLIC;
-use crate::types::HSA_IOLINKTYPE::{
+use crate::hsakmttypes::HSA_HEAPTYPE::HSA_HEAPTYPE_FRAME_BUFFER_PUBLIC;
+use crate::hsakmttypes::HSA_IOLINKTYPE::{
     HSA_IOLINKTYPE_PCIEXPRESS, HSA_IOLINKTYPE_UNDEFINED, HSA_IOLINK_TYPE_QPI_1_1,
 };
-use crate::types::{
+use crate::hsakmttypes::{
     get_hsa_gfxip_table, hsa_gfxip_table, node_props_t, HsaCacheProperties, HsaIoLinkProperties,
     HsaMemoryProperties, HsaNodeProperties, HsaSystemProperties, HsakmtStatus, HSA_CPU_SIBLINGS,
     HSA_GET_GFX_VERSION_FULL, HSA_IOLINKTYPE, SGPR_SIZE_PER_CU,
 };
+use crate::queues::hsakmt_get_vgpr_size_per_cu;
 use amdgpu_drm_sys::bindings::{
     amdgpu_device_deinitialize, amdgpu_device_handle, amdgpu_device_initialize,
     amdgpu_get_marketing_name, amdgpu_gpu_info, amdgpu_query_gpu_info, AMDGPU_IDS_FLAGS_FUSION,
@@ -2000,6 +2000,11 @@ pub unsafe fn topology_take_snapshot() -> HsakmtStatus {
     HSAKMT_STATUS_SUCCESS
 }
 
+/* Drop the Snapshot of the HSA topology information. Assume lock is held. */
+pub fn topology_drop_snapshot() {
+    // ...
+}
+
 pub unsafe fn hsaKmtAcquireSystemProperties(
     system_properties: &mut HsaSystemProperties,
 ) -> HsakmtStatus {
@@ -2023,10 +2028,12 @@ pub unsafe fn hsaKmtAcquireSystemProperties(
 
     let global = hsakmt_topology_global_get();
 
-    // err = hsakmt_fmm_init_process_apertures(g_system->NumNodes);
-    // if (err != HSAKMT_STATUS_SUCCESS)
-    // goto init_process_apertures_failed;
-    //
+    let err = hsakmt_fmm_init_process_apertures(global.g_system.NumNodes);
+    if err != HSAKMT_STATUS_SUCCESS {
+        topology_drop_snapshot();
+        return err;
+    }
+
     // err = hsakmt_init_process_doorbells(g_system->NumNodes);
     // if (err != HSAKMT_STATUS_SUCCESS)
     // goto init_doorbells_failed;

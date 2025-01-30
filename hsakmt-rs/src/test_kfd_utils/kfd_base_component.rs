@@ -1,9 +1,9 @@
 #![allow(non_snake_case, dead_code)]
 
+use crate::hsakmttypes::HsaSystemProperties;
+use crate::hsakmttypes::HsakmtStatus::HSAKMT_STATUS_SUCCESS;
 use crate::open_close::hsakmt_open_kfd;
 use crate::topology::hsaKmtAcquireSystemProperties;
-use crate::types::HsaSystemProperties;
-use crate::types::HsakmtStatus::HSAKMT_STATUS_SUCCESS;
 
 #[derive(Debug)]
 pub struct KFDBaseComponentTest {

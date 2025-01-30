@@ -2,12 +2,12 @@ use crate::globals::{
     hsakmt_global_get, hsakmt_global_is_svm_api_supported_set, hsakmt_kfd_fd_set,
     hsakmt_kfd_open_count_increase, hsakmt_page_shift_set, hsakmt_page_size_set,
 };
-use crate::topology::hsakmt_topology_sysfs_get_system_props;
-use crate::types::HsakmtStatus::{
+use crate::hsakmttypes::HsakmtStatus::{
     HSAKMT_STATUS_KERNEL_ALREADY_OPENED, HSAKMT_STATUS_KERNEL_IO_CHANNEL_NOT_OPENED,
     HSAKMT_STATUS_SUCCESS,
 };
-use crate::types::{HsaSystemProperties, HsakmtStatus};
+use crate::hsakmttypes::{HsaSystemProperties, HsakmtStatus};
+use crate::topology::hsakmt_topology_sysfs_get_system_props;
 use crate::version::hsakmt_init_kfd_version;
 use libc::{
     close, dlerror, dlsym, getenv, open, strcmp, sysconf, O_CLOEXEC, O_RDWR, RTLD_DEFAULT,
@@ -127,7 +127,7 @@ pub unsafe fn hsa_kmt_close_kfd() -> HsakmtStatus {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fmm::hsakmt_fmm_global_print;
+    use crate::fmm_globals::hsakmt_fmm_global_print;
     use crate::globals::hsakmt_global_print;
     use crate::version::hsa_kmt_get_version;
 
