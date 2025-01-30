@@ -4,12 +4,17 @@ use crate::fmm::hsakmt_open_drm_render_device;
 use crate::globals::{check_kfd_open_and_panic, hsakmt_global_get};
 use crate::queues::hsakmt_get_vgpr_size_per_cu;
 use crate::types::HsakmtStatus::{
-    HSAKMT_STATUS_INVALID_NODE_UNIT, HSAKMT_STATUS_NOT_SUPPORTED, HSAKMT_STATUS_SUCCESS,
+    HSAKMT_STATUS_ERROR, HSAKMT_STATUS_INVALID_NODE_UNIT, HSAKMT_STATUS_INVALID_PARAMETER,
+    HSAKMT_STATUS_NOT_SUPPORTED, HSAKMT_STATUS_NO_MEMORY, HSAKMT_STATUS_SUCCESS,
+};
+use crate::types::HSA_HEAPTYPE::HSA_HEAPTYPE_FRAME_BUFFER_PUBLIC;
+use crate::types::HSA_IOLINKTYPE::{
+    HSA_IOLINKTYPE_PCIEXPRESS, HSA_IOLINKTYPE_UNDEFINED, HSA_IOLINK_TYPE_QPI_1_1,
 };
 use crate::types::{
     get_hsa_gfxip_table, hsa_gfxip_table, node_props_t, HsaCacheProperties, HsaIoLinkProperties,
     HsaMemoryProperties, HsaNodeProperties, HsaSystemProperties, HsakmtStatus, HSA_CPU_SIBLINGS,
-    HSA_GET_GFX_VERSION_FULL, SGPR_SIZE_PER_CU,
+    HSA_GET_GFX_VERSION_FULL, HSA_IOLINKTYPE, SGPR_SIZE_PER_CU,
 };
 use amdgpu_drm_sys::bindings::{
     amdgpu_device_deinitialize, amdgpu_device_handle, amdgpu_device_initialize,
@@ -1004,49 +1009,33 @@ impl SysDevicesVirtualKfd {
                 }
 
                 props.NodeFrom = node_id;
+            } else if pair[0] == "node_to" {
+                let v = pair[1].trim().parse::<usize>().unwrap();
+
+                let is_node_supported = self.topology_sysfs_check_node_supported(v);
+                if !is_node_supported {
+                    return HSAKMT_STATUS_NOT_SUPPORTED;
+                }
+
+                props.NodeTo = node_id;
+            } else if pair[0] == "weight" {
+                props.Weight = pair[1].trim().parse::<u32>().unwrap();
+            } else if pair[0] == "min_latency" {
+                props.MinimumLatency = pair[1].trim().parse::<u32>().unwrap();
+            } else if pair[0] == "max_latency" {
+                props.MaximumLatency = pair[1].trim().parse::<u32>().unwrap();
+            } else if pair[0] == "min_bandwidth" {
+                props.MinimumBandwidth = pair[1].trim().parse::<u32>().unwrap();
+            } else if pair[0] == "max_bandwidth" {
+                props.MaximumBandwidth = pair[1].trim().parse::<u32>().unwrap();
+            } else if pair[0] == "recommended_transfer_size" {
+                props.RecTransferSize = pair[1].trim().parse::<u32>().unwrap();
+            } else if pair[0] == "recommended_sdma_engine_id_mask" {
+                props.RecSdmaEngIdMask = pair[1].trim().parse::<u32>().unwrap();
+            } else if pair[0] == "flags" {
+                props.Flags.LinkProperty = pair[1].trim().parse::<u32>().unwrap();
             }
-
-            // else if pair[0] == "node_to" {
-            //     let v = pair[1].trim().parse::<usize>().unwrap();
-            //
-            //     if sys_node_id != v {
-            //         return HSAKMT_STATUS_INVALID_NODE_UNIT;
-            //     }
-            //
-            //     props.NodeFrom = node_id;
-            // }
         }
-
-        // else if (strcmp(prop_name, "node_to") == 0) {
-        //     bool is_node_supported;
-        //     uint32_t sysfs_node_id;
-        //
-        //     sysfs_node_id = (uint32_t)prop_val;
-        //     ret = topology_sysfs_check_node_supported(sysfs_node_id, &is_node_supported);
-        //     if (!is_node_supported) {
-        //         ret = HSAKMT_STATUS_NOT_SUPPORTED;
-        //         memset(props, 0, sizeof(*props));
-        //         goto err2;
-        //     }
-        //     ret = topology_map_sysfs_to_user_node_id(sysfs_node_id, &props->NodeTo);
-        //     if (ret != HSAKMT_STATUS_SUCCESS)
-        //     goto err2;
-        // } else if (strcmp(prop_name, "weight") == 0)
-        // props->Weight = (uint32_t)prop_val;
-        // else if (strcmp(prop_name, "min_latency") == 0)
-        // props->MinimumLatency = (uint32_t)prop_val;
-        // else if (strcmp(prop_name, "max_latency") == 0)
-        // props->MaximumLatency = (uint32_t)prop_val;
-        // else if (strcmp(prop_name, "min_bandwidth") == 0)
-        // props->MinimumBandwidth = (uint32_t)prop_val;
-        // else if (strcmp(prop_name, "max_bandwidth") == 0)
-        // props->MaximumBandwidth = (uint32_t)prop_val;
-        // else if (strcmp(prop_name, "recommended_transfer_size") == 0)
-        // props->RecTransferSize = (uint32_t)prop_val;
-        // else if (strcmp(prop_name, "recommended_sdma_engine_id_mask") == 0)
-        // props->RecSdmaEngIdMask = (uint32_t)prop_val;
-        // else if (strcmp(prop_name, "flags") == 0)
-        // props->Flags.LinkProperty = (uint32_t)prop_val;
 
         HSAKMT_STATUS_SUCCESS
     }
@@ -1521,12 +1510,322 @@ pub unsafe fn topology_get_cpu_cache_props(
     HSAKMT_STATUS_SUCCESS
 }
 
+/* Find the CPU that this GPU (gpu_node) directly connects to */
+pub fn gpu_get_direct_link_cpu(gpu_node: u32, node_props: &mut [node_props_t]) -> i32 {
+    let props = &node_props[gpu_node as usize].link;
+
+    if !node_props[gpu_node as usize].node.KFDGpuID > 0
+        || props.is_empty()
+        || node_props[gpu_node as usize].node.NumIOLinks == 0
+    {
+        return -1;
+    }
+
+    for prop in props {
+        /* >20 is GPU->CPU->GPU */
+        if prop.IoLinkType == HSA_IOLINKTYPE_PCIEXPRESS && prop.Weight <= 20 {
+            return prop.NodeTo as i32;
+        }
+    }
+
+    -1
+}
+
+/* Get node1->node2 IO link information. This should be a direct link that has
+ * been created in the kernel.
+ */
+pub fn get_direct_iolink_info(
+    node1: u32,
+    node2: u32,
+    node_props: &[node_props_t],
+    weight: &mut u32,
+    hsa_type: Option<&mut HSA_IOLINKTYPE>,
+) -> HsakmtStatus {
+    let props = &node_props[node1 as usize].link;
+
+    if props.is_empty() {
+        return HSAKMT_STATUS_INVALID_NODE_UNIT;
+    }
+
+    for prop in props {
+        if prop.NodeTo == node2 {
+            if *weight > 0 {
+                *weight = prop.Weight;
+            }
+
+            if let Some(v) = hsa_type {
+                *v = prop.IoLinkType
+            }
+
+            return HSAKMT_STATUS_SUCCESS;
+        }
+    }
+
+    HSAKMT_STATUS_INVALID_PARAMETER
+}
+
+pub unsafe fn get_indirect_iolink_info(
+    node1: u32,
+    node2: u32,
+    node_props: &mut [node_props_t],
+    weight: &mut u32,
+    hsa_type: &mut HSA_IOLINKTYPE,
+) -> HsakmtStatus {
+    let mut dir_cpu1 = -1;
+    let mut dir_cpu2 = -1;
+
+    let mut weight1: u32 = 0;
+    let mut weight2: u32 = 0;
+    let mut weight3: u32 = 0;
+
+    let mut i = 0;
+
+    *weight = 0;
+    *hsa_type = HSA_IOLINKTYPE_UNDEFINED;
+
+    if node1 == node2 {
+        return HSAKMT_STATUS_INVALID_PARAMETER;
+    }
+
+    /* CPU->CPU is not an indirect link */
+    // !node_props[node1 as usize].node.KFDGpuID && !node_props[node2 as usize].node.KFDGpuID
+
+    if node_props[node1 as usize].node.KFDGpuID == 0
+        && node_props[node2 as usize].node.KFDGpuID == 0
+    {
+        return HSAKMT_STATUS_INVALID_NODE_UNIT;
+    }
+
+    if (node_props[node1 as usize].node.HiveID > 0)
+        && (node_props[node2 as usize].node.HiveID > 0)
+        && node_props[node1 as usize].node.HiveID == node_props[node2 as usize].node.HiveID
+    {
+        return HSAKMT_STATUS_INVALID_PARAMETER;
+    }
+
+    if node_props[node1 as usize].node.KFDGpuID > 0 {
+        dir_cpu1 = gpu_get_direct_link_cpu(node1, node_props);
+    }
+    if node_props[node2 as usize].node.KFDGpuID > 0 {
+        dir_cpu2 = gpu_get_direct_link_cpu(node2, node_props);
+    }
+
+    if dir_cpu1 < 0 && dir_cpu2 < 0 {
+        return HSAKMT_STATUS_ERROR;
+    }
+
+    /* if the node2(dst) is GPU , it need to be large bar for host access*/
+    if node_props[node2 as usize].node.KFDGpuID > 0 {
+        for node_mem in &node_props[node2 as usize].mem {
+            if node_mem.HeapType == HSA_HEAPTYPE_FRAME_BUFFER_PUBLIC {
+                break;
+            }
+
+            i += 1;
+        }
+
+        if i >= node_props[node2 as usize].node.NumMemoryBanks {
+            return HSAKMT_STATUS_ERROR;
+        }
+    }
+
+    #[allow(unused_assignments)]
+    let mut ret = HSAKMT_STATUS_SUCCESS;
+
+    /* Possible topology:
+     *   GPU --(weight1) -- CPU -- (weight2) -- GPU
+     *   GPU --(weight1) -- CPU -- (weight2) -- CPU -- (weight3) -- GPU
+     *   GPU --(weight1) -- CPU -- (weight2) -- CPU
+     *   CPU -- (weight2) -- CPU -- (weight3) -- GPU
+     */
+    if dir_cpu1 >= 0 {
+        /* GPU->CPU ... */
+        if dir_cpu2 >= 0 {
+            if dir_cpu1 == dir_cpu2
+            /* GPU->CPU->GPU*/
+            {
+                ret =
+                    get_direct_iolink_info(node1, dir_cpu1 as u32, node_props, &mut weight1, None);
+                if ret != HSAKMT_STATUS_SUCCESS {
+                    return ret;
+                }
+
+                ret = get_direct_iolink_info(
+                    dir_cpu1 as u32,
+                    node2,
+                    node_props,
+                    &mut weight2,
+                    Some(hsa_type),
+                );
+            } else
+            /* GPU->CPU->CPU->GPU*/
+            {
+                ret =
+                    get_direct_iolink_info(node1, dir_cpu1 as u32, node_props, &mut weight1, None);
+                if ret != HSAKMT_STATUS_SUCCESS {
+                    return ret;
+                }
+
+                ret = get_direct_iolink_info(
+                    dir_cpu1 as u32,
+                    dir_cpu2 as u32,
+                    node_props,
+                    &mut weight2,
+                    Some(hsa_type),
+                );
+
+                if ret != HSAKMT_STATUS_SUCCESS {
+                    return ret;
+                }
+                /* On QPI interconnection, GPUs can't access
+                 * each other if they are attached to different
+                 * CPU sockets. CPU<->CPU weight larger than 20
+                 * means the two CPUs are in different sockets.
+                 */
+                if *hsa_type == HSA_IOLINK_TYPE_QPI_1_1 && weight2 > 20 {
+                    return HSAKMT_STATUS_NOT_SUPPORTED;
+                }
+                ret =
+                    get_direct_iolink_info(dir_cpu2 as u32, node2, node_props, &mut weight3, None);
+            }
+        } else
+        /* GPU->CPU->CPU */
+        {
+            ret = get_direct_iolink_info(node1, dir_cpu1 as u32, node_props, &mut weight1, None);
+            if ret != HSAKMT_STATUS_SUCCESS {
+                return ret;
+            }
+            ret = get_direct_iolink_info(
+                dir_cpu1 as u32,
+                node2,
+                node_props,
+                &mut weight2,
+                Some(hsa_type),
+            );
+        }
+    } else {
+        /* CPU->CPU->GPU */
+        ret = get_direct_iolink_info(
+            node1,
+            dir_cpu2 as u32,
+            node_props,
+            &mut weight2,
+            Some(hsa_type),
+        );
+        if ret != HSAKMT_STATUS_SUCCESS {
+            return ret;
+        }
+
+        ret = get_direct_iolink_info(dir_cpu2 as u32, node2, node_props, &mut weight3, None);
+    }
+
+    if ret != HSAKMT_STATUS_SUCCESS {
+        return ret;
+    }
+
+    *weight = weight1 + weight2 + weight3;
+
+    ret
+}
+
+/* topology_get_free_io_link_slot_for_node - For the given node_id, find the
+ * next available free slot to add an io_link
+ */
+pub fn topology_get_free_io_link_slot_for_node<'a>(
+    node_id: u32,
+    sys_props: &HsaSystemProperties,
+    node_props: &'a mut [node_props_t],
+) -> Option<&'a mut HsaIoLinkProperties> {
+    if node_id >= sys_props.NumNodes {
+        println!("Invalid node [{}]", node_id);
+        return None;
+    }
+
+    let props = &mut node_props[node_id as usize].link;
+    if props.is_empty() {
+        println!("No io_link reported for Node [{}]", node_id);
+        return None;
+    }
+
+    if node_props[node_id as usize].node.NumIOLinks >= sys_props.NumNodes - 1 {
+        println!("No more space for io_link for Node [{}]", node_id);
+        return None;
+    }
+
+    let index = node_props[node_id as usize].node.NumIOLinks;
+    let v = &mut props[index as usize];
+
+    Some(v)
+}
+
+/* topology_add_io_link_for_node - If a free slot is available,
+ * add io_link for the given Node.
+ * TODO: Add other members of HsaIoLinkProperties
+ */
+pub fn topology_add_io_link_for_node(
+    node_from: u32,
+    sys_props: &HsaSystemProperties,
+    node_props: &mut [node_props_t],
+    IoLinkType: HSA_IOLINKTYPE,
+    node_to: u32,
+    Weight: u32,
+) -> HsakmtStatus {
+    let props = topology_get_free_io_link_slot_for_node(node_from, sys_props, node_props);
+    if props.is_none() {
+        return HSAKMT_STATUS_NO_MEMORY;
+    }
+
+    let props = props.unwrap();
+
+    props.IoLinkType = IoLinkType;
+    props.NodeFrom = node_from;
+    props.NodeTo = node_to;
+    props.Weight = Weight;
+
+    node_props[node_from as usize].node.NumIOLinks += 1;
+
+    HSAKMT_STATUS_SUCCESS
+}
+
+pub unsafe fn topology_create_indirect_gpu_links(
+    sys_props: &HsaSystemProperties,
+    node_props: &mut [node_props_t],
+) {
+    let mut weight = 0;
+    let mut hsa_type = HSA_IOLINKTYPE_UNDEFINED;
+
+    for i in 0..sys_props.NumNodes {
+        for j in 0..sys_props.NumNodes {
+            get_indirect_iolink_info(i, j, node_props, &mut weight, &mut hsa_type);
+
+            if weight == 0 {
+                // pass
+            } else {
+                let ret =
+                    topology_add_io_link_for_node(i, sys_props, node_props, hsa_type, j, weight);
+                if ret != HSAKMT_STATUS_SUCCESS {
+                    println!("Fail to add IO link {} -> {}", i, j);
+                }
+            }
+
+            get_indirect_iolink_info(j, i, node_props, &mut weight, &mut hsa_type);
+
+            if weight == 0 {
+                continue;
+            } else {
+                let ret =
+                    topology_add_io_link_for_node(j, sys_props, node_props, hsa_type, i, weight);
+                if ret != HSAKMT_STATUS_SUCCESS {
+                    println!("Fail to add IO link {} -> {}", j, i);
+                }
+            }
+        }
+    }
+}
+
 pub unsafe fn topology_take_snapshot() -> HsakmtStatus {
     let mut gen_start: u32 = 0;
-    let _gen_end: u32 = 0;
-
-    let _mem_id: u32 = 0;
-    let _cache_id: u32 = 0;
+    let mut gen_end: u32 = 0;
 
     let mut sys_props: HsaSystemProperties = HsaSystemProperties::default();
     let mut temp_props: Vec<node_props_t> = Vec::new();
@@ -1624,6 +1923,7 @@ pub unsafe fn topology_take_snapshot() -> HsakmtStatus {
                  */
                 while sys_link_id < num_ioLinks && link_id < sys_props.NumNodes - 1 {
                     let mut temp_link = HsaIoLinkProperties::default();
+
                     let ret = sys_devices_kfd.topology_sysfs_get_iolink_props(
                         i as u32,
                         sys_link_id,
@@ -1647,55 +1947,52 @@ pub unsafe fn topology_take_snapshot() -> HsakmtStatus {
                 temp_props[i].node.NumIOLinks = link_id;
             }
 
-            // if (num_p2pLinks) {
-            // 	uint32_t sys_link_id = 0;
-            //
-            // 	/* Parse all the sysfs specified p2p links.
-            // 	 */
-            // 	while (sys_link_id < num_p2pLinks &&
-            // 		link_id < sys_props.NumNodes - 1) {
-            // 		ret = topology_sysfs_get_iolink_props(i, sys_link_id++,
-            // 					&temp_props[i].link[link_id], true);
-            // 		if (ret == HSAKMT_STATUS_NOT_SUPPORTED) {
-            // 			continue;
-            // 		} else if (ret != HSAKMT_STATUS_SUCCESS) {
-            // 			free_properties(temp_props, i + 1);
-            // 			goto err;
-            // 		}
-            // 		link_id++;
-            // 	}
-            // 	temp_props[i].node.NumIOLinks = link_id;
-            // }
+            if num_p2pLinks > 0 {
+                let mut sys_link_id = 0;
+
+                /* Parse all the sysfs specified p2p links.
+                 */
+                while sys_link_id < num_p2pLinks && link_id < sys_props.NumNodes - 1 {
+                    let mut temp_link = HsaIoLinkProperties::default();
+
+                    let ret = sys_devices_kfd.topology_sysfs_get_iolink_props(
+                        i as u32,
+                        sys_link_id,
+                        &mut temp_link,
+                        true,
+                    );
+                    if ret == HSAKMT_STATUS_NOT_SUPPORTED {
+                        continue;
+                    } else if ret != HSAKMT_STATUS_SUCCESS {
+                        return ret;
+                    }
+
+                    link_id += 1;
+                    sys_link_id += 1;
+
+                    temp_props[i].link.push(temp_link);
+                }
+
+                temp_props[i].node.NumIOLinks = link_id;
+            }
         }
     }
 
-    // 	if (!p2p_links) {
-    // 		/* All direct IO links are created in the kernel. Here we need to
-    // 		 * connect GPU<->GPU or GPU<->CPU indirect IO links.
-    // 		 */
-    // 		topology_create_indirect_gpu_links(&sys_props, temp_props);
-    // 	}
-    //
-    // 	ret = topology_sysfs_get_generation(&gen_end);
-    // 	if (ret != HSAKMT_STATUS_SUCCESS) {
-    // 		free_properties(temp_props, sys_props.NumNodes);
-    // 		goto err;
-    // 	}
-    //
-    // 	if (gen_start != gen_end) {
-    // 		free_properties(temp_props, sys_props.NumNodes);
-    // 		temp_props = 0;
-    // 		goto retry;
-    // 	}
-    //
-    // 	if (!g_system) {
-    // 		g_system = malloc(sizeof(HsaSystemProperties));
-    // 		if (!g_system) {
-    // 			free_properties(temp_props, sys_props.NumNodes);
-    // 			ret = HSAKMT_STATUS_NO_MEMORY;
-    // 			goto err;
-    // 		}
-    // 	}
+    if !p2p_links {
+        /* All direct IO links are created in the kernel. Here we need to
+         * connect GPU<->GPU or GPU<->CPU indirect IO links.
+         */
+        topology_create_indirect_gpu_links(&sys_props, &mut temp_props);
+    }
+
+    let ret = topology_sysfs_get_generation(&mut gen_end);
+    if ret != HSAKMT_STATUS_SUCCESS {
+        return ret;
+    }
+
+    if gen_start != gen_end {
+        panic!("gen start != gen end");
+    }
 
     hsakmt_topology_global_g_system_set(sys_props);
     hsakmt_topology_global_g_props_set(temp_props);

@@ -734,7 +734,7 @@ impl Default for HsaLinkPropertySt {
 
 #[repr(C)]
 pub union HSA_LINKPROPERTY {
-    LinkProperty: u32,
+    pub LinkProperty: u32,
     ui32: HsaLinkPropertySt,
 }
 
@@ -757,17 +757,17 @@ pub struct HsaIoLinkProperties {
     pub(crate) VersionMinor: u32,          // Bus interface version (optional)
 
     pub(crate) NodeFrom: u32, //
-    NodeTo: u32,              //
+    pub(crate) NodeTo: u32,   //
 
-    Weight: u32, // weight factor (derived from CDIT)
+    pub(crate) Weight: u32, // weight factor (derived from CDIT)
 
-    MinimumLatency: u32,     // minimum cost of time to transfer (rounded to ns)
-    MaximumLatency: u32,     // maximum cost of time to transfer (rounded to ns)
-    MinimumBandwidth: u32,   // minimum interface Bandwidth in MB/s
-    MaximumBandwidth: u32,   // maximum interface Bandwidth in MB/s
-    RecTransferSize: u32,    // recommended transfer size to reach maximum bandwidth in Bytes
-    RecSdmaEngIdMask: u32,   // recommended sdma engine IDs to reach maximum bandwidth
-    Flags: HSA_LINKPROPERTY, // override flags (may be active for specific platforms)
+    pub(crate) MinimumLatency: u32, // minimum cost of time to transfer (rounded to ns)
+    pub(crate) MaximumLatency: u32, // maximum cost of time to transfer (rounded to ns)
+    pub(crate) MinimumBandwidth: u32, // minimum interface Bandwidth in MB/s
+    pub(crate) MaximumBandwidth: u32, // maximum interface Bandwidth in MB/s
+    pub(crate) RecTransferSize: u32, // recommended transfer size to reach maximum bandwidth in Bytes
+    pub(crate) RecSdmaEngIdMask: u32, // recommended sdma engine IDs to reach maximum bandwidth
+    pub Flags: HSA_LINKPROPERTY,     // override flags (may be active for specific platforms)
 }
 
 impl Default for HsaIoLinkProperties {
