@@ -52,6 +52,10 @@ pub fn hsakmt_page_shift_set(hsakmt_page_shift: i32) {
     HSA_KMT_GLOBAL.lock().unwrap().hsakmt_page_shift = hsakmt_page_shift;
 }
 
+pub fn hsakmt_global_is_svm_api_supported_set(is_svm_api_supported: bool) {
+    HSA_KMT_GLOBAL.lock().unwrap().hsakmt_is_svm_api_supported = is_svm_api_supported;
+}
+
 pub fn check_kfd_open_and_panic() {
     if HSA_KMT_GLOBAL.lock().unwrap().hsakmt_kfd_open_count == 0 {
         panic!("HSAKMT_STATUS_KERNEL_IO_CHANNEL_NOT_OPENED");

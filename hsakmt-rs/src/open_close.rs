@@ -1,6 +1,6 @@
 use crate::globals::{
-    hsakmt_global_get, hsakmt_kfd_fd_set, hsakmt_kfd_open_count_increase, hsakmt_page_shift_set,
-    hsakmt_page_size_set,
+    hsakmt_global_get, hsakmt_global_is_svm_api_supported_set, hsakmt_kfd_fd_set,
+    hsakmt_kfd_open_count_increase, hsakmt_page_shift_set, hsakmt_page_size_set,
 };
 use crate::topology::hsakmt_topology_sysfs_get_system_props;
 use crate::types::HsakmtStatus::{
@@ -41,12 +41,7 @@ pub unsafe fn init_page_size() {
 /// TODO safety function explain
 pub unsafe fn hsakmt_open_kfd() -> HsakmtStatus {
     let mut fd = -1;
-    let mut sys_props = HsaSystemProperties {
-        NumNodes: 0,
-        PlatformOem: 0,
-        PlatformId: 0,
-        PlatformRev: 0,
-    };
+    let mut sys_props = HsaSystemProperties::default();
 
     let global = hsakmt_global_get();
 
@@ -95,8 +90,9 @@ pub unsafe fn hsakmt_open_kfd() -> HsakmtStatus {
 
         let ct = CString::new("0").unwrap();
         #[allow(clippy::nonminimal_bool)]
-        let _hsakmt_is_svm_api_supported =
+        let hsakmt_is_svm_api_supported =
             !(!use_svm_str.is_null() && strcmp(use_svm_str, ct.as_ptr()) == 0);
+        hsakmt_global_is_svm_api_supported_set(hsakmt_is_svm_api_supported);
 
         let ret = hsakmt_topology_sysfs_get_system_props(&mut sys_props);
         if ret != HSAKMT_STATUS_SUCCESS {

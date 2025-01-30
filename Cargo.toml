@@ -18,6 +18,7 @@ members = [
     "opencl-sys",
     "opencl-node",
     "utilities",
+    "xf86drm-sys",
 ]
 
 #[profile.dev]

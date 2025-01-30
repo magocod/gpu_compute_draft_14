@@ -6,4 +6,5 @@ edition = "2021"
 [dependencies]
 libc = "0.2"
 amdgpu-drm-sys = { path = "../amdgpu-drm-sys" }
-utilities = { path = "../utilities" }
+xf86drm-sys = { path = "../xf86drm-sys" }
+#utilities = { path = "../utilities" }
