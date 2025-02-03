@@ -36,12 +36,20 @@ pub fn hsakmt_global_get() -> HsaKmtGlobal {
     *HSA_KMT_GLOBAL.lock().unwrap()
 }
 
+pub fn global_page_size() -> i32 {
+    HSA_KMT_GLOBAL.lock().unwrap().hsakmt_page_size
+}
+
 pub fn hsakmt_kfd_open_count_increase() {
     HSA_KMT_GLOBAL.lock().unwrap().hsakmt_kfd_open_count += 1;
 }
 
 pub fn hsakmt_kfd_fd_set(hsakmt_kfd_fd: i32) {
     HSA_KMT_GLOBAL.lock().unwrap().hsakmt_kfd_fd = hsakmt_kfd_fd;
+}
+
+pub fn hsakmt_kfd_fd_get() -> i32 {
+    HSA_KMT_GLOBAL.lock().unwrap().hsakmt_kfd_fd
 }
 
 pub fn hsakmt_page_size_set(hsakmt_page_size: i32) {
@@ -60,6 +68,10 @@ pub fn check_kfd_open_and_panic() {
     if HSA_KMT_GLOBAL.lock().unwrap().hsakmt_kfd_open_count == 0 {
         panic!("HSAKMT_STATUS_KERNEL_IO_CHANNEL_NOT_OPENED");
     }
+}
+
+pub fn hsakmt_global_hsakmt_is_dgpu_set(hsakmt_is_dgpu: bool) {
+    HSA_KMT_GLOBAL.lock().unwrap().hsakmt_is_dgpu = hsakmt_is_dgpu;
 }
 
 #[cfg(test)]

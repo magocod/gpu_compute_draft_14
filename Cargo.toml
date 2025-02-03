@@ -11,6 +11,7 @@ members = [
     "hsa-sys",
     "hsakmt-rs",
     "hsakmt-sys",
+    "numa-sys",
     "opencl",
     "opencl-collections",
     "opencl-collections-examples",

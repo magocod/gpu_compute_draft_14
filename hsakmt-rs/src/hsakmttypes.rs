@@ -1141,3 +1141,10 @@ pub const GFX_VERSION_GFX1201: usize = 0x0C0001;
 pub fn HSA_GET_GFX_VERSION_FULL(ui32: &HsaEngineId) -> u32 {
     ((ui32.Major) << 16) | ((ui32.Minor) << 8) | (ui32.Stepping)
 }
+
+pub const GPU_HUGE_PAGE_SIZE: usize = 2 << 20;
+
+// #define ALIGN_UP(x,align) (((uint64_t)(x) + (align) - 1) & ~(uint64_t)((align)-1))
+pub fn ALIGN_UP(x: u64, align: u64) -> u64 {
+    ((x) + (align) - 1) & !((align) - 1)
+}

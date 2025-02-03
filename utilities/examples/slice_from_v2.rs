@@ -12,5 +12,12 @@ fn main() {
     }
     println!("slice {:?}", &slice);
 
+    let slice_copy = slice.clone();
+    unsafe {
+        (*slice_copy)[2] = 15;
+    }
+
+    println!("slice_copy {:?}", &slice);
+
     println!("v1 {:?}", &arr);
 }

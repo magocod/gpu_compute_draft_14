@@ -38,7 +38,7 @@ pub unsafe fn atomic_set_packet_header(
 unsafe extern "C" fn handle_queue_error(
     status: hsa_status_t,
     _source: *mut hsa_queue_t,
-    _data: *mut ::std::os::raw::c_void,
+    _data: *mut std::os::raw::c_void,
 ) {
     println!("queue status: {:?}", status);
 }

@@ -1,7 +1,9 @@
 #![allow(non_camel_case_types, dead_code, non_snake_case)]
 
 use crate::fmm::{hsakmt_fmm_init_process_apertures, hsakmt_open_drm_render_device};
-use crate::globals::{check_kfd_open_and_panic, hsakmt_global_get};
+use crate::globals::{
+    check_kfd_open_and_panic, hsakmt_global_get, hsakmt_global_hsakmt_is_dgpu_set,
+};
 use crate::hsakmttypes::HsakmtStatus::{
     HSAKMT_STATUS_ERROR, HSAKMT_STATUS_INVALID_NODE_UNIT, HSAKMT_STATUS_INVALID_PARAMETER,
     HSAKMT_STATUS_NOT_SUPPORTED, HSAKMT_STATUS_NO_MEMORY, HSAKMT_STATUS_SUCCESS,
@@ -67,6 +69,28 @@ pub struct HsaKmtTopologyGlobal {
     pub num_sysfs_nodes: usize,
 }
 
+impl HsaKmtTopologyGlobal {
+    pub fn get_node_props(&self) -> &Vec<node_props_t> {
+        &self.g_props
+    }
+
+    pub fn hsakmt_topology_get_node_props(&self, NodeId: u32) -> &HsaNodeProperties {
+        if NodeId >= self.g_props.len() as u32 {
+            panic!("handle hsakmt_topology_get_node_props");
+        }
+
+        &self.g_props[NodeId as usize].node
+    }
+
+    pub fn hsakmt_topology_get_iolink_props(&self, NodeId: u32) -> &Vec<HsaIoLinkProperties> {
+        if NodeId >= self.g_props.len() as u32 {
+            panic!("handle hsakmt_topology_get_iolink_props");
+        }
+
+        &self.g_props[NodeId as usize].link
+    }
+}
+
 impl Clone for HsaKmtTopologyGlobal {
     fn clone(&self) -> Self {
         Self {
@@ -79,18 +103,19 @@ impl Clone for HsaKmtTopologyGlobal {
     }
 }
 
-static HSA_KMT_TOPOLOGY_GLOBAL: Mutex<HsaKmtTopologyGlobal> = Mutex::new(HsaKmtTopologyGlobal {
-    g_system: HsaSystemProperties {
-        NumNodes: 0,
-        PlatformOem: 0,
-        PlatformId: 0,
-        PlatformRev: 0,
-    },
-    g_props: vec![],
-    map_user_to_sysfs_node_id: vec![],
-    map_user_to_sysfs_node_id_size: 0,
-    num_sysfs_nodes: 0,
-});
+pub static HSA_KMT_TOPOLOGY_GLOBAL: Mutex<HsaKmtTopologyGlobal> =
+    Mutex::new(HsaKmtTopologyGlobal {
+        g_system: HsaSystemProperties {
+            NumNodes: 0,
+            PlatformOem: 0,
+            PlatformId: 0,
+            PlatformRev: 0,
+        },
+        g_props: vec![],
+        map_user_to_sysfs_node_id: vec![],
+        map_user_to_sysfs_node_id_size: 0,
+        num_sysfs_nodes: 0,
+    });
 
 pub fn hsakmt_topology_global_get() -> HsaKmtTopologyGlobal {
     HSA_KMT_TOPOLOGY_GLOBAL.lock().unwrap().clone()
@@ -101,6 +126,10 @@ pub fn hsakmt_topology_global_map_user_to_sysfs_node_id_set(ids: Vec<usize>) {
 
     g.map_user_to_sysfs_node_id_size = ids.len();
     g.map_user_to_sysfs_node_id = ids;
+}
+
+pub fn hsakmt_get_num_sysfs_nodes() -> usize {
+    HSA_KMT_TOPOLOGY_GLOBAL.lock().unwrap().num_sysfs_nodes
 }
 
 pub fn hsakmt_topology_global_num_sysfs_nodes_set(num_sysfs_nodes: usize) {
@@ -2041,6 +2070,13 @@ pub unsafe fn hsaKmtAcquireSystemProperties(
     *system_properties = global.g_system;
 
     HSAKMT_STATUS_SUCCESS
+}
+
+pub unsafe fn hsakmt_topology_setup_is_dgpu_param(props: &HsaNodeProperties) {
+    /* if we found a dGPU node, then treat the whole system as dGPU */
+    if props.NumCPUCores == 0 && props.NumFComputeCores > 0 {
+        hsakmt_global_hsakmt_is_dgpu_set(true);
+    }
 }
 
 #[cfg(test)]
