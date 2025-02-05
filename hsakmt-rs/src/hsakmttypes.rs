@@ -1148,3 +1148,139 @@ pub const GPU_HUGE_PAGE_SIZE: usize = 2 << 20;
 pub fn ALIGN_UP(x: u64, align: u64) -> u64 {
     ((x) + (align) - 1) & !((align) - 1)
 }
+
+//
+// Memory allocation definitions for the KFD HSA interface
+//
+
+#[derive(Debug, Copy, Clone)]
+pub struct HsaMemFlagSt {
+    pub NonPaged: u32,     // default = 0: pageable memory
+    pub CachePolicy: u32,  // see HSA_CACHING_TYPE
+    pub ReadOnly: u32,     // default = 0: Read/Write memory
+    pub PageSize: u32,     // see HSA_PAGE_SIZE
+    pub HostAccess: u32,   // default = 0: GPU access only
+    pub NoSubstitute: u32, // default = 0: if specific memory is not available on node (e.g. on
+    // discrete GPU local), allocation may fall back to system memory node 0
+    // memory (= always available). Otherwise no allocation is possible.
+    pub GDSMemory: u32, // default = 0: If set, the allocation will occur in GDS heap.
+    // HostAccess must be 0, all other flags (except NoSubstitute) should
+    // be 0 when setting this entry to 1. GDS allocation may fail due to
+    // limited resources. Application code is required to work without
+    // any allocated GDS memory using regular memory.
+    // Allocation fails on any node without GPU function.
+    pub Scratch: u32, // default = 0: If set, the allocation will occur in GPU "scratch area".
+    // HostAccess must be 0, all other flags (except NoSubstitute) should be 0
+    // when setting this entry to 1. Scratch allocation may fail due to limited
+    // resources. Application code is required to work without any allocation.
+    // Allocation fails on any node without GPU function.
+    pub AtomicAccessFull: u32, // default = 0: If set, the memory will be allocated and mapped to allow
+    // atomic ops processing. On AMD APU, this will use the ATC path on system
+    // memory, irrespective of the NonPaged flag setting (= if NonPaged is set,
+    // the memory is pagelocked but mapped through IOMMUv2 instead of GPUVM).
+    // All atomic ops must be supported on this memory.
+    pub AtomicAccessPartial: u32, // default = 0: See above for AtomicAccessFull description, however
+    // focused on AMD discrete GPU that support PCIe atomics; the memory
+    // allocation is mapped to allow for PCIe atomics to operate on system
+    // memory, irrespective of NonPaged set or the presence of an ATC path
+    // in the system. The atomic operations supported are limited to SWAP,
+    // CompareAndSwap (CAS) and FetchAdd (this PCIe op allows both atomic
+    // increment and decrement via 2-complement arithmetic), which are the
+    // only atomic ops directly supported in PCI Express.
+    // On AMD APU, setting this flag will allocate the same type of memory
+    // as AtomicAccessFull, but it will be considered compatible with
+    // discrete GPU atomic operations access.
+    pub ExecuteAccess: u32, // default = 0: Identifies if memory is primarily used for data or accessed
+    // for executable code (e.g. queue memory) by the host CPU or the device.
+    // Influences the page attribute setting within the allocation
+    pub CoarseGrain: u32, // default = 0: The memory can be accessed assuming cache
+    // coherency maintained by link infrastructure and HSA agents.
+    // 1: memory consistency needs to be enforced at
+    // synchronization points at dispatch or other software
+    // enforced synchronization boundaries.
+    pub AQLQueueMemory: u32, // default = 0; If 1: The caller indicates that the memory will be used as AQL queue memory.
+    // The KFD will ensure that the memory returned is allocated in the optimal memory location
+    // and optimal alignment requirements
+    pub FixedAddress: u32, // Allocate memory at specified virtual address. Fail if address is not free.
+    pub NoNUMABind: u32,   // Don't bind system memory to a specific NUMA node
+    pub Uncached: u32,     // Caching flag for fine-grained memory on A+A HW platform
+    pub NoAddress: u32, // only do vram allocation, return a handle, not allocate virtual address.
+    pub OnlyAddress: u32, // only do virtal address allocation without vram allocation.
+    pub ExtendedCoherent: u32, // system-scope coherence on atomic instructions
+    pub GTTAccess: u32, // default = 0; If 1: The caller indicates this memory will be mapped to GART for MES
+    // KFD will allocate GTT memory with the Preferred_node set as gpu_id for GART mapping
+    pub Contiguous: u32, // Allocate contiguous VRAM
+    pub Reserved: u32,
+}
+
+impl Default for HsaMemFlagSt {
+    fn default() -> Self {
+        Self {
+            NonPaged: 1,     // default = 0: pageable memory
+            CachePolicy: 2,  // see HSA_CACHING_TYPE
+            ReadOnly: 1,     // default = 0: Read/Write memory
+            PageSize: 2,     // see HSA_PAGE_SIZE
+            HostAccess: 1,   // default = 0: GPU access only
+            NoSubstitute: 1, // default = 0: if specific memory is not available on node (e.g. on
+            // discrete GPU local), allocation may fall back to system memory node 0
+            // memory (= always available). Otherwise no allocation is possible.
+            GDSMemory: 1, // default = 0: If set, the allocation will occur in GDS heap.
+            // HostAccess must be 0, all other flags (except NoSubstitute) should
+            // be 0 when setting this entry to 1. GDS allocation may fail due to
+            // limited resources. Application code is required to work without
+            // any allocated GDS memory using regular memory.
+            // Allocation fails on any node without GPU function.
+            Scratch: 1, // default = 0: If set, the allocation will occur in GPU "scratch area".
+            // HostAccess must be 0, all other flags (except NoSubstitute) should be 0
+            // when setting this entry to 1. Scratch allocation may fail due to limited
+            // resources. Application code is required to work without any allocation.
+            // Allocation fails on any node without GPU function.
+            AtomicAccessFull: 1, // default = 0: If set, the memory will be allocated and mapped to allow
+            // atomic ops processing. On AMD APU, this will use the ATC path on system
+            // memory, irrespective of the NonPaged flag setting (= if NonPaged is set,
+            // the memory is pagelocked but mapped through IOMMUv2 instead of GPUVM).
+            // All atomic ops must be supported on this memory.
+            AtomicAccessPartial: 1, // default = 0: See above for AtomicAccessFull description, however
+            // focused on AMD discrete GPU that support PCIe atomics, the memory
+            // allocation is mapped to allow for PCIe atomics to operate on system
+            // memory, irrespective of NonPaged set or the presence of an ATC path
+            // in the system. The atomic operations supported are limited to SWAP,
+            // CompareAndSwap (CAS) and FetchAdd (this PCIe op allows both atomic
+            // increment and decrement via 2-complement arithmetic), which are the
+            // only atomic ops directly supported in PCI Express.
+            // On AMD APU, setting this flag will allocate the same type of memory
+            // as AtomicAccessFull, but it will be considered compatible with
+            // discrete GPU atomic operations access.
+            ExecuteAccess: 1, // default = 0: Identifies if memory is primarily used for data or accessed
+            // for executable code (e.g. queue memory) by the host CPU or the device.
+            // Influences the page attribute setting within the allocation
+            CoarseGrain: 1, // default = 0: The memory can be accessed assuming cache
+            // coherency maintained by link infrastructure and HSA agents.
+            // 1: memory consistency needs to be enforced at
+            // synchronization points at dispatch or other software
+            // enforced synchronization boundaries.
+            AQLQueueMemory: 1, // default = 0, If 1: The caller indicates that the memory will be used as AQL queue memory.
+            // The KFD will ensure that the memory returned is allocated in the optimal memory location
+            // and optimal alignment requirements
+            FixedAddress: 1, // Allocate memory at specified virtual address. Fail if address is not free.
+            NoNUMABind: 1,   // Don't bind system memory to a specific NUMA node
+            Uncached: 1,     // Caching flag for fine-grained memory on A+A HW platform
+            NoAddress: 1, // only do vram allocation, return a handle, not allocate virtual address.
+            OnlyAddress: 1, // only do virtal address allocation without vram allocation.
+            ExtendedCoherent: 1, // system-scope coherence on atomic instructions
+            GTTAccess: 1, // default = 0; If 1: The caller indicates this memory will be mapped to GART for MES
+            // KFD will allocate GTT memory with the Preferred_node set as gpu_id for GART mapping
+            Contiguous: 1, // Allocate contiguous VRAM
+            Reserved: 9,
+        }
+    }
+}
+
+pub union HsaMemFlagUnion {
+    pub ui32: HsaMemFlagSt,
+    pub Value: u32,
+}
+
+pub struct HsaMemFlags {
+    pub st: HsaMemFlagUnion,
+}

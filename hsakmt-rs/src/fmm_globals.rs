@@ -8,8 +8,8 @@
 )]
 
 use crate::fmm_globals::svm_aperture_type::SVM_DEFAULT;
-use crate::hsakmttypes::HSA_ENGINE_ID;
-use crate::rbtree::{rbtree_s, rbtree_t};
+use crate::hsakmttypes::{HsaMemFlagUnion, HsaMemFlags, HSA_ENGINE_ID};
+use crate::rbtree::{rbtree_node_t, rbtree_s, rbtree_t};
 use amdgpu_drm_sys::bindings::amdgpu_device;
 use std::sync::Mutex;
 
@@ -44,7 +44,7 @@ pub struct manageable_aperture_ops_t {
     // void (*release_area)(manageable_aperture_t *aper, void *addr, uint64_t size);
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct manageable_aperture<'a> {
     pub base: *mut std::os::raw::c_void,
     pub limit: *mut std::os::raw::c_void,
@@ -134,6 +134,18 @@ impl svm_t<'static> {
     }
 
     pub fn dgpu_alt_aperture(&self) -> Option<&'static manageable_aperture_t> {
+        let d = &self.apertures[SVM_DEFAULT as usize];
+        Some(d)
+    }
+
+    pub fn dgpu_alt_aperture_get_mut(&mut self) -> Option<&'static mut manageable_aperture_t> {
+        let d = &mut self.apertures[SVM_DEFAULT as usize];
+        Some(d)
+    }
+}
+
+impl svm_t<'_> {
+    pub fn dgpu_alt_aperture_alt(&self) -> Option<&manageable_aperture_t> {
         let d = &self.apertures[SVM_DEFAULT as usize];
         Some(d)
     }
@@ -345,6 +357,70 @@ impl HsaKmtFmmGlobal<'static> {
     }
 }
 
+// #[derive(Debug)]
+pub struct vm_object {
+    pub start: *mut std::os::raw::c_void,
+    pub userptr: *mut std::os::raw::c_void,
+    pub userptr_size: u64,
+    pub size: u64,   /* size allocated on GPU. When the user requests a random
+                     	* size, Thunk aligns it to page size and allocates this
+                     	* aligned size on GPU
+                     	*/
+    pub handle: u64, /* opaque */
+    pub node_id: u32,
+    pub node: rbtree_node_t,
+    pub user_node: rbtree_node_t,
+
+    pub mflags: HsaMemFlags, /* memory allocation flags */
+    /* Registered nodes to map on SVM mGPU */
+    pub registered_device_id_array: *mut u32,
+    pub registered_device_id_array_size: u32,
+    pub registered_node_id_array: *mut u32,
+    pub registration_count: u32, /* the same memory region can be registered multiple times */
+    /* Nodes that mapped already */
+    pub mapped_device_id_array: *mut u32,
+    pub mapped_device_id_array_size: u32,
+    pub mapped_node_id_array: *mut u32,
+    pub mapping_count: u32,
+    /* Metadata of imported graphics buffers */
+    pub metadata: *mut std::os::raw::c_void,
+    /* User data associated with the memory */
+    pub user_data: *mut std::os::raw::c_void,
+    /* Flag to indicate imported KFD buffer */
+    pub is_imported_kfd_bo: bool,
+}
+
+pub type vm_object_t = vm_object;
+
+impl Default for vm_object {
+    fn default() -> Self {
+        Self {
+            start: std::ptr::null_mut(),
+            userptr: std::ptr::null_mut(),
+            userptr_size: 0,
+            size: 0,
+            handle: 0,
+            node_id: 0,
+            node: Default::default(),
+            user_node: Default::default(),
+            mflags: HsaMemFlags {
+                st: HsaMemFlagUnion { Value: 0 },
+            },
+            registered_device_id_array: std::ptr::null_mut(),
+            registered_device_id_array_size: 0,
+            registered_node_id_array: std::ptr::null_mut(),
+            registration_count: 0,
+            mapped_device_id_array: std::ptr::null_mut(),
+            mapped_device_id_array_size: 0,
+            mapped_node_id_array: std::ptr::null_mut(),
+            mapping_count: 0,
+            metadata: std::ptr::null_mut(),
+            user_data: std::ptr::null_mut(),
+            is_imported_kfd_bo: false,
+        }
+    }
+}
+
 pub static HSA_KMT_FMM_GLOBAL: Mutex<HsaKmtFmmGlobal> = Mutex::new(HsaKmtFmmGlobal {
     drm_render_fds: [0; DRM_LAST_RENDER_NODE + 1 - DRM_FIRST_RENDER_NODE],
     amdgpu_handle: [amdgpu_device { _unused: [] };
@@ -505,6 +581,10 @@ pub fn hsakmt_fmm_global_gpu_mem_set(vec: Vec<gpu_mem_t<'static>>) {
     g.gpu_mem = vec;
 }
 
+pub fn hsakmt_fmm_global_gpu_mem_count_get() -> u32 {
+    HSA_KMT_FMM_GLOBAL.lock().unwrap().gpu_mem_count
+}
+
 pub fn gpu_mem_find_by_gpu_id(gpu_id: u32) -> i32 {
     let g = HSA_KMT_FMM_GLOBAL.lock().unwrap();
     g.gpu_mem_find_by_gpu_id(gpu_id)
@@ -535,6 +615,15 @@ pub fn hsakmt_fmm_global_svm_reserve_svm_get() -> bool {
 // pub fn hsakmt_fmm_global_svm_reserve_svm_apertures_set(apertures: Vec<kfd_process_device_apertures>) -> bool {
 //     let g = HSA_KMT_FMM_GLOBAL.lock().unwrap().svm.apertures
 //     g.svm.reserve_svm
+// }
+
+pub fn hsakmt_fmm_global_svm_set(svm: svm_t<'static>) {
+    let mut g = HSA_KMT_FMM_GLOBAL.lock().unwrap();
+    g.svm = svm;
+}
+
+// pub fn hsakmt_fmm_global_svm_get() -> &'static svm_t {
+//     &HSA_KMT_FMM_GLOBAL.lock().unwrap().svm
 // }
 
 #[cfg(test)]

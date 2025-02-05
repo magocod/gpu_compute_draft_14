@@ -74,6 +74,10 @@ pub fn hsakmt_global_hsakmt_is_dgpu_set(hsakmt_is_dgpu: bool) {
     HSA_KMT_GLOBAL.lock().unwrap().hsakmt_is_dgpu = hsakmt_is_dgpu;
 }
 
+pub fn hsakmt_global_hsakmt_is_dgpu_get() -> bool {
+    HSA_KMT_GLOBAL.lock().unwrap().hsakmt_is_dgpu
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
