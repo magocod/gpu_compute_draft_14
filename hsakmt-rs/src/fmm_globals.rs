@@ -51,11 +51,28 @@ pub struct manageable_aperture<'a> {
     pub align: u64,
     pub guard_pages: u32,
     pub vm_ranges: vm_area_t<'a>,
-    pub tree: rbtree_t,
-    pub user_tree: rbtree_t,
+    pub tree: rbtree_t<'a>,
+    pub user_tree: rbtree_t<'a>,
     pub is_cpu_accessible: bool,
     // ops: &'a manageable_aperture_ops_t,
     pub ops: manageable_aperture_ops_t,
+}
+
+impl manageable_aperture<'_> {
+    pub fn create_partial_clone(&self) -> Self {
+        Self {
+            base: self.base,
+            limit: self.limit,
+            align: self.align,
+            guard_pages: self.guard_pages,
+            vm_ranges: self.vm_ranges.clone(),
+            // FIXME
+            tree: rbtree_s { root: None, sentinel: None },
+            user_tree: rbtree_s { root: None, sentinel: None },
+            is_cpu_accessible: self.is_cpu_accessible,
+            ops: self.ops.clone(),
+        }
+    }
 }
 
 unsafe impl Send for manageable_aperture<'_> {}
@@ -144,9 +161,14 @@ impl svm_t<'static> {
     }
 }
 
-impl svm_t<'_> {
-    pub fn dgpu_alt_aperture_alt(&self) -> Option<&manageable_aperture_t> {
+impl<'a> svm_t<'a> {
+    pub fn dgpu_alt_aperture_alt(&self) -> Option<&'a manageable_aperture_t> {
         let d = &self.apertures[SVM_DEFAULT as usize];
+        Some(d)
+    }
+
+    pub fn dgpu_alt_aperture_alt_mut(&mut self) -> Option<&'a mut manageable_aperture_t> {
+        let d = &mut self.apertures[SVM_DEFAULT as usize];
         Some(d)
     }
 }
@@ -358,7 +380,7 @@ impl HsaKmtFmmGlobal<'static> {
 }
 
 // #[derive(Debug)]
-pub struct vm_object {
+pub struct vm_object<'a> {
     pub start: *mut std::os::raw::c_void,
     pub userptr: *mut std::os::raw::c_void,
     pub userptr_size: u64,
@@ -368,8 +390,8 @@ pub struct vm_object {
                      	*/
     pub handle: u64, /* opaque */
     pub node_id: u32,
-    pub node: rbtree_node_t,
-    pub user_node: rbtree_node_t,
+    pub node: rbtree_node_t<'a>,
+    pub user_node: rbtree_node_t<'a>,
 
     pub mflags: HsaMemFlags, /* memory allocation flags */
     /* Registered nodes to map on SVM mGPU */
@@ -390,9 +412,9 @@ pub struct vm_object {
     pub is_imported_kfd_bo: bool,
 }
 
-pub type vm_object_t = vm_object;
+pub type vm_object_t<'a> = vm_object<'a>;
 
-impl Default for vm_object {
+impl Default for vm_object<'_> {
     fn default() -> Self {
         Self {
             start: std::ptr::null_mut(),

@@ -12,9 +12,9 @@ use crate::rbtree_amd::{rbtree_key_s, rbtree_key_t};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct rbtree_node_s<'a> {
     pub key: rbtree_key_t,
-    pub left: Option<&'a rbtree_node_t>,
-    pub right: Option<&'a rbtree_node_t>,
-    pub parent: Option<&'a rbtree_node_t>,
+    pub left: Option<&'a rbtree_node_t<'a>>,
+    pub right: Option<&'a rbtree_node_t<'a>>,
+    pub parent: Option<&'a rbtree_node_t<'a>>,
     pub color: u8,
     pub data: u8,
 }
@@ -32,15 +32,15 @@ impl Default for rbtree_node_s<'_> {
     }
 }
 
-pub type rbtree_node_t = rbtree_node_s<'static>;
+pub type rbtree_node_t<'a> = rbtree_node_s<'a>;
 
 #[derive(Debug)]
-pub struct rbtree_s {
-    pub root: Option<&'static mut rbtree_node_t>,
-    pub sentinel: Option<rbtree_node_t>,
+pub struct rbtree_s<'a> {
+    pub root: Option<&'a mut rbtree_node_t<'a>>,
+    pub sentinel: Option<rbtree_node_t<'a>>,
 }
 
-pub type rbtree_t = rbtree_s;
+pub type rbtree_t<'a> = rbtree_s<'a>;
 
 // #define rbt_red(node)			((node)->color = 1)
 // #define rbt_black(node)			((node)->color = 0)
@@ -76,7 +76,7 @@ pub fn rbtree_init(tree: &mut rbtree_t) {
     }
 }
 
-pub fn hsakmt_rbtree_insert(tree: &'static mut rbtree_t, node: &'static mut rbtree_node_t) {
+pub fn hsakmt_rbtree_insert<'a>(tree: &'a mut rbtree_s<'a>, node: &'a mut rbtree_node_t<'a>) {
     // rbtree_node_t  **root, *temp, *sentinel;
 
     /* a binary tree insert */

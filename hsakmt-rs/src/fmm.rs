@@ -444,7 +444,7 @@ pub unsafe fn mmap_aperture_allocate_aligned(
     let alignment_order = hsakmt_fmm_global_alignment_order_get();
 
     let alignment_size = page_size << alignment_order;
-    let guard_size: u64 = 0;
+    // let guard_size: u64 = 0;
 
     if !aper.is_cpu_accessible {
         println!("MMap Aperture must be CPU accessible\n");
@@ -557,10 +557,10 @@ pub unsafe fn init_mmap_apertures(
     fmm_global.svm.apertures[svm_coherent].limit = std::ptr::null_mut();
 
     // let aperture = fmm_global.svm.apertures[svm_default].clone();
-    let aperture = &fmm_global.svm.apertures[svm_default];
+    let aperture = &fmm_global.svm.apertures[svm_default].create_partial_clone();
 
     // remove mutex lock
-    // drop(fmm_global);
+    drop(fmm_global);
 
     /* Try to allocate one page. If it fails, we'll fall back to
      * managing our own reserved address range.
@@ -939,12 +939,12 @@ pub unsafe fn fmm_translate_ioc_to_hsa_flags(ioc_flags: u32) -> HsaMemFlags {
     mflags
 }
 
-pub fn vm_create_and_init_object(
+pub fn vm_create_and_init_object<'a>(
     start: *mut std::os::raw::c_void,
     size: u64,
     handle: u64,
     mflags: HsaMemFlags,
-) -> vm_object_t {
+) -> vm_object_t<'a> {
     let mut object = vm_object_t::default();
 
     // if (object) {
@@ -973,13 +973,13 @@ pub fn vm_create_and_init_object(
 }
 
 /* returns 0 on success. Assumes, that fmm_mutex is locked on entry */
-pub unsafe fn aperture_allocate_object(
-    app: &manageable_aperture_t,
+pub unsafe fn aperture_allocate_object<'a>(
+    app: &mut manageable_aperture_t,
     new_address: *mut std::os::raw::c_void,
     handle: u64,
     MemorySizeInBytes: u64,
     mflags: HsaMemFlags,
-) -> *mut vm_object_t {
+) -> *mut vm_object_t<'a> {
     // let new_object: *mut vm_object_t = std::ptr::null_mut();
 
     /* Allocate new object */
@@ -998,14 +998,14 @@ pub unsafe fn aperture_allocate_object(
 /* After allocating the memory, return the vm_object created for this memory.
  * Return NULL if any failure.
  */
-pub unsafe fn fmm_allocate_memory_object(
+pub unsafe fn fmm_allocate_memory_object<'a>(
     gpu_id: u32,
     mem: *mut std::os::raw::c_void,
     MemorySizeInBytes: u64,
-    aperture: &manageable_aperture_t,
+    aperture: &mut manageable_aperture_t,
     mmap_offset: &mut u64,
     ioc_flags: u32,
-) -> *mut vm_object_t {
+) -> *mut vm_object_t<'a> {
     let mut args = kfd_ioctl_alloc_memory_of_gpu_args {
         va_addr: std::ptr::null_mut(),
         size: 0,
@@ -1092,7 +1092,7 @@ pub unsafe fn __fmm_allocate_device(
     gpu_id: u32,
     address: *mut std::os::raw::c_void,
     MemorySizeInBytes: u64,
-    aperture: &manageable_aperture_t,
+    aperture: &mut manageable_aperture_t,
     mmap_offset: &mut u64,
     ioc_flags: u32,
     alignment: u64,
@@ -1145,13 +1145,13 @@ pub unsafe fn __fmm_allocate_device(
     mem
 }
 
-pub unsafe fn map_mmio(
+pub unsafe fn map_mmio<'a>(
     node_id: u32,
     gpu_id: u32,
     mmap_fd: i32,
-    svm: &svm_t,
+    svm: &'a mut svm_t<'a>,
 ) -> *mut std::os::raw::c_void {
-    let aperture = svm.dgpu_alt_aperture_alt().unwrap();
+    let aperture = svm.dgpu_alt_aperture_alt_mut().unwrap();
 
     let mut vm_obj: *mut vm_object_t = std::ptr::null_mut();
 
@@ -1532,33 +1532,35 @@ pub unsafe fn hsakmt_fmm_init_process_apertures(NumNodes: u32) -> HsakmtStatus {
     if (!init_mem_handle_aperture(page_size as u32, guardPages)) {
         println!("Failed to init mem_handle_aperture\n");
     }
-
+    
     let hsakmt_kfd_fd = hsakmt_kfd_fd_get();
 
-    for g_m in gpu_mem.iter_mut() {
-        if !hsakmt_topology_is_svm_needed(&g_m.EngineId) {
-            // println!("hsakmt_topology_is_svm_needed no");
-            continue;
-        }
-
-        // println!("hsakmt_topology_is_svm_needed yes");
-
-        g_m.mmio_aperture.base = map_mmio(g_m.node_id, g_m.gpu_id, hsakmt_kfd_fd, &svm);
-
-        if !g_m.mmio_aperture.base.is_null() {
-            let pt = (g_m.mmio_aperture.base as *mut u8).add((page_size - 1) as usize);
-            let r = pt.add((page_size - 1) as usize);
-
-            g_m.mmio_aperture.limit = r as *mut std::os::raw::c_void;
-        } else {
-            // println!("Failed to map remapped mmio page on gpu_mem {}", g_m.gpu_id);
-            panic!("Failed to map remapped mmio page on gpu_mem {}", g_m.gpu_id);
-        }
-    }
-
-    hsakmt_fmm_global_gpu_mem_set(gpu_mem);
     hsakmt_fmm_global_svm_set(svm);
 
+    // for g_m in gpu_mem.iter_mut() {
+    //     if !hsakmt_topology_is_svm_needed(&g_m.EngineId) {
+    //         // println!("hsakmt_topology_is_svm_needed no");
+    //         continue;
+    //     }
+    // 
+    //     // println!("hsakmt_topology_is_svm_needed yes");
+    // 
+    //     let r = map_mmio(g_m.node_id, g_m.gpu_id, hsakmt_kfd_fd);
+    //     g_m.mmio_aperture.base = r;
+    // 
+    //     if !g_m.mmio_aperture.base.is_null() {
+    //         let pt = (g_m.mmio_aperture.base as *mut u8).add((page_size - 1) as usize);
+    //         let r = pt.add((page_size - 1) as usize);
+    // 
+    //         g_m.mmio_aperture.limit = r as *mut std::os::raw::c_void;
+    //     } else {
+    //         // println!("Failed to map remapped mmio page on gpu_mem {}", g_m.gpu_id);
+    //         panic!("Failed to map remapped mmio page on gpu_mem {}", g_m.gpu_id);
+    //     }
+    // }
+
+    hsakmt_fmm_global_gpu_mem_set(gpu_mem);
+    
     HSAKMT_STATUS_SUCCESS
 }
 
